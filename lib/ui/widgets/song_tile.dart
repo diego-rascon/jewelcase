@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -46,7 +48,7 @@ class SongListScope extends StatefulWidget {
 
   final Widget child;
 
-  static ValueNotifier<int?>? _of(BuildContext context) =>
+  static _HoveredRow? _of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_SongListHover>()?.hovered;
 
   @override
@@ -54,7 +56,7 @@ class SongListScope extends StatefulWidget {
 }
 
 class _SongListScopeState extends State<SongListScope> {
-  final _hovered = ValueNotifier<int?>(null);
+  final _hovered = _HoveredRow();
 
   @override
   void dispose() {
@@ -69,10 +71,30 @@ class _SongListScopeState extends State<SongListScope> {
 class _SongListHover extends InheritedWidget {
   const _SongListHover({required this.hovered, required super.child});
 
-  final ValueNotifier<int?> hovered;
+  final _HoveredRow hovered;
 
   @override
   bool updateShouldNotify(_SongListHover oldWidget) => hovered != oldWidget.hovered;
+}
+
+/// The index of the hovered row in a [SongListScope], if any.
+class _HoveredRow extends ValueNotifier<int?> {
+  _HoveredRow() : super(null);
+
+  bool _disposed = false;
+
+  /// Clears [index] if it is still the hovered row, once the current frame is
+  /// done. A row calls this while it is torn down, when its neighbors can't be
+  /// rebuilt yet (and the scope may be going away too).
+  void releaseLater(int index) => scheduleMicrotask(() {
+    if (!_disposed && value == index) value = null;
+  });
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 }
 
 /// The column layout shared by [SongTile] and [SongListHeader], so the header
@@ -281,7 +303,7 @@ class SongTile extends StatefulWidget {
 
 class _SongTileState extends State<SongTile> {
   bool _hover = false;
-  ValueNotifier<int?>? _scope;
+  _HoveredRow? _scope;
 
   void _setHover(bool hover) {
     setState(() => _hover = hover);
@@ -296,8 +318,15 @@ class _SongTileState extends State<SongTile> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _scope = SongListScope._of(context);
+  }
+
+  @override
   void dispose() {
-    if (_hover && _scope?.value == widget.index) _scope?.value = null;
+    final index = widget.index;
+    if (_hover && index != null) _scope?.releaseLater(index);
     super.dispose();
   }
 
@@ -324,7 +353,6 @@ class _SongTileState extends State<SongTile> {
 
   @override
   Widget build(BuildContext context) {
-    _scope = SongListScope._of(context);
     final song = widget.song;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
