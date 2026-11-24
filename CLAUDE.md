@@ -57,7 +57,7 @@ The app ID is `app.jewelcase.player` on every platform; the Dart package is `jew
 - `songs` and `upNext` are cached and rebuilt only when the sequence changes. just_audio re-emits sequence state on every playback event, so the controller notifies listeners only for visible changes.
 - In widgets, use `context.select` for the specific fields shown rather than `watch` on the whole controller.
 - Scrobbling: a new play is a new current source, or a repeat-one loop (detected through `positionDiscontinuityStream`). Each play sends "now playing", then a submission at `scrobbleThreshold()`: half the track or 4 minutes.
-- `AmpAudioHandler` (audio_service) mirrors player state to the OS media session. It's a no-op where unsupported.
+- `JewelcaseAudioHandler` (audio_service) mirrors player state to the OS media session. It's a no-op where unsupported. Windows support comes from `audio_service_win` (SMTC: media keys and the media flyout). `windows/CMakeLists.txt` builds that plugin as C++20, because recent MSVC rejects the C++17 coroutine headers that C++/WinRT uses.
 - On Windows and Linux, just_audio uses the `media_kit` (libmpv) backend via `JustAudioMediaKit.ensureInitialized()`.
 
 **Favorites and playlists:**

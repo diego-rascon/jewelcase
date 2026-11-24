@@ -49,6 +49,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.1.4"
+  audio_service_win:
+    dependency: "direct main"
+    description:
+      name: audio_service_win
+      sha256: "8da189ff9d58c4ec86a73aa7a0b3e631fffbae9b58cd4ef3f4beb3aa957dfadc"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.0"
   audio_session:
     dependency: transitive
     description:

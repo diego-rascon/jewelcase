@@ -43,6 +43,7 @@ dependencies:
   media_kit_libs_audio: ^1.0.7
   audio_service: ^0.18.19
   flutter_cache_manager: ^3.5.0
+  audio_service_win: ^0.1.0
 
 dev_dependencies:
   flutter_test:
