@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +8,7 @@ import '../../api/models.dart';
 import '../../audio/player_controller.dart';
 import '../../state/favorites.dart';
 import '../actions.dart';
+import '../theme.dart';
 import '../widgets/art_colors.dart';
 import '../widgets/cover_art.dart';
 import '../widgets/player_controls.dart';
@@ -62,7 +64,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         final base = art?.primaryContainer ?? const Color(0xFF2C2C2E);
         final deep = Color.lerp(base, Colors.black, 0.72)!;
         const fg = Colors.white;
-        final wide = MediaQuery.sizeOf(context).width >= 900;
+        final wide = isWide(context);
 
         return Theme(
           data: Theme.of(context).copyWith(
@@ -196,7 +198,11 @@ class _PlayerPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDesktopLike = MediaQuery.sizeOf(context).width >= 600;
+    // Phones and tablets have hardware volume buttons.
+    final showVolume = switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS || TargetPlatform.fuchsia => false,
+      TargetPlatform.linux || TargetPlatform.macOS || TargetPlatform.windows => true,
+    };
 
     return LayoutBuilder(
       builder: (context, c) {
@@ -265,7 +271,7 @@ class _PlayerPanel extends StatelessWidget {
                   const SeekBar(color: Colors.white),
                   const SizedBox(height: 8),
                   const TransportControls(size: 1.4, color: Colors.white),
-                  if (isDesktopLike) ...[const SizedBox(height: 12), const VolumeControl(width: 180)],
+                  if (showVolume) ...[const SizedBox(height: 12), const VolumeControl(width: 180)],
                 ],
               ),
             ),

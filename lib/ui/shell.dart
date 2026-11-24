@@ -128,7 +128,7 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavController>();
-    final session = context.watch<SessionController>();
+    final multipleLibraries = context.select<SessionController, bool>((s) => s.libraries.length > 1);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
@@ -182,7 +182,7 @@ class _Sidebar extends StatelessWidget {
                 ),
               ),
               const Expanded(child: _SidebarPlaylists()),
-              if (session.libraries.length > 1)
+              if (multipleLibraries)
                 const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: LibraryPicker(dense: true)),
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),

@@ -32,20 +32,20 @@ class _FavoriteSongsScreenState extends State<FavoriteSongsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<SessionController>();
+    final libraryId = context.select<SessionController, String?>((s) => s.libraryId);
+    final session = context.read<SessionController>();
     final favorites = context.read<FavoritesController>();
     final player = context.read<PlayerController>();
 
     return AsyncView<List<Song>>(
       frame: AsyncView.page,
-      deps: [session.libraryId],
+      deps: [libraryId],
       load: () async {
         // The heart state covers all libraries; the list only the selected
         // one, which needs its own request.
         final all = favorites.refresh();
-        final id = session.libraryId;
-        if (id == null) return (await all).songs;
-        final (_, starred) = await (all, session.client.getStarred(musicFolderId: id)).wait;
+        if (libraryId == null) return (await all).songs;
+        final (_, starred) = await (all, session.client.getStarred(musicFolderId: libraryId)).wait;
         return starred.songs;
       },
       builder: (context, songs, reload) {

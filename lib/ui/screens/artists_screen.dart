@@ -18,14 +18,15 @@ class ArtistsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<SessionController>();
+    final libraryId = context.select<SessionController, String?>((s) => s.libraryId);
+    final session = context.read<SessionController>();
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
         bottom: false,
         child: AsyncView<List<Artist>>(
-          deps: [session.libraryId],
-          load: () => session.client.getArtists(musicFolderId: session.libraryId),
+          deps: [libraryId],
+          load: () => session.client.getArtists(musicFolderId: libraryId),
           builder: (context, artists, reload) => _ArtistList(artists: artists, showTitle: showTitle),
         ),
       ),

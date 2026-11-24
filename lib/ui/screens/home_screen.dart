@@ -5,6 +5,7 @@ import '../../api/models.dart';
 import '../../audio/player_controller.dart';
 import '../../state/session.dart';
 import '../actions.dart';
+import '../navigation.dart';
 import '../widgets/async_view.dart';
 import '../widgets/layout.dart';
 import '../widgets/media_cards.dart';
@@ -44,7 +45,8 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final session = context.watch<SessionController>();
+    final libraryId = context.select<SessionController, String?>((s) => s.libraryId);
+    final session = context.read<SessionController>();
     final theme = Theme.of(context);
     final pad = pagePadding(context);
     final player = context.read<PlayerController>();
@@ -54,7 +56,7 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         bottom: false,
         child: AsyncView<_HomeData>(
-          deps: [session.libraryId],
+          deps: [libraryId],
           load: () => _load(session),
           builder: (context, data, reload) => RefreshIndicator(
             onRefresh: reload,
@@ -68,8 +70,7 @@ class HomeScreen extends StatelessWidget {
                       Expanded(child: Text(_greeting(), style: theme.textTheme.headlineMedium)),
                       IconButton(
                         tooltip: 'Settings',
-                        onPressed: () =>
-                            Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+                        onPressed: () => context.read<NavController>().push(const SettingsScreen()),
                         icon: const Icon(Icons.settings_outlined),
                       ),
                     ],
