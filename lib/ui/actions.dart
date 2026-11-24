@@ -240,6 +240,8 @@ Future<void> showAddToPlaylist(BuildContext context, List<String> songIds) async
   final client = context.read<SessionController>().client;
   final playlists = context.read<PlaylistsController>();
   final messenger = ScaffoldMessenger.maybeOf(context);
+  // Requested once: the sheet's builder reruns on resizes and keyboard changes.
+  final request = client.getPlaylists();
   final choice = await showModalBottomSheet<Object>(
     context: context,
     useRootNavigator: true,
@@ -247,7 +249,7 @@ Future<void> showAddToPlaylist(BuildContext context, List<String> songIds) async
     isScrollControlled: true,
     constraints: const BoxConstraints(maxWidth: 520),
     builder: (context) => FutureBuilder(
-      future: client.getPlaylists(),
+      future: request,
       builder: (context, snap) {
         final lists = snap.data ?? const <Playlist>[];
         return ConstrainedBox(
@@ -269,6 +271,12 @@ Future<void> showAddToPlaylist(BuildContext context, List<String> songIds) async
                 const Padding(
                   padding: EdgeInsets.all(24),
                   child: Center(child: CircularProgressIndicator()),
+                )
+              else if (snap.hasError)
+                ListTile(
+                  leading: Icon(Icons.cloud_off_rounded, color: Theme.of(context).colorScheme.error),
+                  title: const Text('Couldn’t load your playlists'),
+                  subtitle: Text('${snap.error}'),
                 ),
               for (final p in lists)
                 ListTile(
