@@ -12,7 +12,7 @@ import 'actions.dart';
 import 'navigation.dart';
 import 'screens/albums_screen.dart';
 import 'screens/artists_screen.dart';
-import 'screens/favorites_screen.dart';
+import 'screens/favorite_songs_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/playlist_detail_screen.dart';
@@ -97,7 +97,6 @@ class _SectionsState extends State<_Sections> {
     Destination.artists => const ArtistsScreen(),
     Destination.songs => const SongsScreen(),
     Destination.playlists => const PlaylistsScreen(),
-    Destination.favorites => const FavoritesScreen(),
     Destination.library => const LibraryScreen(),
   };
 
@@ -175,7 +174,6 @@ class _Sidebar extends StatelessWidget {
               item(Destination.home),
               item(Destination.search),
               const _SidebarHeading('Library'),
-              item(Destination.favorites),
               item(Destination.albums),
               item(Destination.artists),
               item(Destination.songs),
@@ -288,7 +286,8 @@ class _SidebarItem extends StatelessWidget {
   }
 }
 
-/// Every playlist, each opening in the Playlists section.
+/// Favorite songs followed by every playlist, each opening in the Playlists
+/// section.
 class _SidebarPlaylists extends StatelessWidget {
   const _SidebarPlaylists();
 
@@ -301,31 +300,39 @@ class _SidebarPlaylists extends StatelessWidget {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
     final open = nav.current == Destination.playlists ? nav.topRouteName : null;
+    final favorites = _SidebarItem(
+      selected: open == favoriteSongsRouteName,
+      onTap: () => nav.openIn(Destination.playlists, const FavoriteSongsScreen(), name: favoriteSongsRouteName),
+      leading: FavoriteSongsScreen.cover(radius: 4),
+      label: FavoriteSongsScreen.title,
+    );
     return AsyncView<List<Playlist>>(
       deps: [revision],
       load: client.getPlaylists,
       // Too cramped for the full-page loading and error states; the
       // Playlists screen still reports errors.
-      frame: (_) => const SizedBox.shrink(),
-      builder: (context, lists, _) => lists.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.fromLTRB(26, 4, 26, 0),
+      frame: (_) => Align(alignment: Alignment.topLeft, child: favorites),
+      builder: (context, lists, _) => ListView.builder(
+        padding: const EdgeInsets.only(bottom: 8),
+        itemCount: lists.length + 1 + (lists.isEmpty ? 1 : 0),
+        itemBuilder: (context, i) {
+          if (i == 0) return favorites;
+          if (lists.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(26, 8, 26, 0),
               child: Text('No playlists yet', style: muted),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.only(bottom: 8),
-              itemCount: lists.length,
-              itemBuilder: (context, i) {
-                final p = lists[i];
-                final name = playlistRouteName(p.id);
-                return _SidebarItem(
-                  selected: open == name,
-                  onTap: () => nav.openIn(Destination.playlists, PlaylistDetailScreen(playlist: p), name: name),
-                  leading: CoverArt(id: p.coverArt, seed: p.id, radius: 4, icon: Icons.queue_music_rounded),
-                  label: p.name,
-                );
-              },
-            ),
+            );
+          }
+          final p = lists[i - 1];
+          final name = playlistRouteName(p.id);
+          return _SidebarItem(
+            selected: open == name,
+            onTap: () => nav.openIn(Destination.playlists, PlaylistDetailScreen(playlist: p), name: name),
+            leading: CoverArt(id: p.coverArt, seed: p.id, radius: 4, icon: Icons.queue_music_rounded),
+            label: p.name,
+          );
+        },
+      ),
     );
   }
 }

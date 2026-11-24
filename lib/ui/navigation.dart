@@ -11,7 +11,6 @@ enum Destination {
   artists('Artists', Icons.person_outline_rounded, Icons.person_rounded),
   songs('Songs', Icons.music_note_outlined, Icons.music_note_rounded),
   playlists('Playlists', Icons.queue_music_outlined, Icons.queue_music_rounded),
-  favorites('Favorites', Icons.favorite_border_rounded, Icons.favorite_rounded),
 
   /// Phone-only tab combining albums, artists, songs and playlists.
   library('Library', Icons.library_music_outlined, Icons.library_music_rounded);
@@ -22,7 +21,7 @@ enum Destination {
   final IconData icon;
   final IconData selectedIcon;
 
-  static const tabs = [home, search, library, favorites];
+  static const tabs = [home, search, library];
 
   /// The phone library view's tabs, in order.
   static const libraryTabs = [albums, artists, songs, playlists];

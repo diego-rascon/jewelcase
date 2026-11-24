@@ -60,26 +60,18 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
                   )
                 else
                   const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                if (lists.isEmpty)
-                  const SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: EmptyState(
-                      icon: Icons.queue_music_outlined,
-                      title: 'No playlists yet',
-                      message: 'Create one, or add songs from any track menu.',
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(pad, 0, pad, 32),
-                    sliver: SliverLayoutBuilder(
-                      builder: (context, c) => SliverGrid.builder(
-                        gridDelegate: cardGrid(c.crossAxisExtent),
-                        itemCount: lists.length,
-                        itemBuilder: (context, i) => PlaylistCard(playlist: lists[i]),
-                      ),
+                // Favorite songs always comes first, so the grid is never empty.
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(pad, 0, pad, 32),
+                  sliver: SliverLayoutBuilder(
+                    builder: (context, c) => SliverGrid.builder(
+                      gridDelegate: cardGrid(c.crossAxisExtent),
+                      itemCount: lists.length + 1,
+                      itemBuilder: (context, i) =>
+                          i == 0 ? const FavoriteSongsCard() : PlaylistCard(playlist: lists[i - 1]),
                     ),
                   ),
+                ),
               ],
             ),
           ),

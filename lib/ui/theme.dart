@@ -68,6 +68,24 @@ ThemeData buildTheme() {
       color: scheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
+    // MenuAnchor menus (e.g. the Albums sort): inset, rounded rows instead of
+    // edge-to-edge 48px ones.
+    menuTheme: MenuThemeData(
+      style: MenuStyle(
+        backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerHigh),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+        padding: const WidgetStatePropertyAll(EdgeInsets.all(6)),
+      ),
+    ),
+    menuButtonTheme: MenuButtonThemeData(
+      style: ButtonStyle(
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+        padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 12)),
+        minimumSize: const WidgetStatePropertyAll(Size(168, 40)),
+        textStyle: WidgetStatePropertyAll(text.labelLarge),
+      ),
+    ),
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {

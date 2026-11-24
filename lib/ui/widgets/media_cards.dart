@@ -6,6 +6,7 @@ import '../../audio/player_controller.dart';
 import '../../state/session.dart';
 import '../actions.dart';
 import '../format.dart';
+import '../screens/favorite_songs_screen.dart';
 import 'cover_art.dart';
 
 /// Shared card chrome: artwork with a hover lift and optional play button,
@@ -150,6 +151,25 @@ class ArtistCard extends StatelessWidget {
     centered: true,
     onTap: () => openArtist(context, artist.id),
     actions: () => artistActions(context, artist),
+  );
+}
+
+/// The automatic Favorite songs playlist, listed before the real ones.
+class FavoriteSongsCard extends StatelessWidget {
+  const FavoriteSongsCard({super.key});
+
+  @override
+  Widget build(BuildContext context) => _MediaCard(
+    art: FavoriteSongsScreen.cover(radius: 10),
+    title: FavoriteSongsScreen.title,
+    subtitle: 'Automatic playlist',
+    onTap: () => openFavoriteSongs(context),
+    onPlay: () => guarded(context, () async {
+      final session = context.read<SessionController>();
+      final starred = await session.client.getStarred(musicFolderId: session.libraryId);
+      if (context.mounted) await context.read<PlayerController>().playSongs(starred.songs);
+    }),
+    actions: () => [MenuAction('Open', Icons.favorite_rounded, () => openFavoriteSongs(context))],
   );
 }
 

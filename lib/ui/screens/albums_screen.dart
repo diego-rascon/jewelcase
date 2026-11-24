@@ -2,14 +2,18 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../api/models.dart';
+import '../../state/favorites.dart';
 import '../../state/session.dart';
 import '../widgets/async_view.dart';
 import '../widgets/layout.dart';
 import '../widgets/media_cards.dart';
 
-/// All albums, sortable, loaded page by page as you scroll.
+/// All albums, sortable, loaded page by page as you scroll. The favorites
+/// filter loads every starred album at once and sorts them locally, since
+/// the server can't sort starred albums.
 class AlbumsScreen extends StatefulWidget {
   const AlbumsScreen({super.key, this.showTitle = true});
 
@@ -22,15 +26,20 @@ class AlbumsScreen extends StatefulWidget {
 class _AlbumsScreenState extends State<AlbumsScreen> {
   static const _pageSize = 60;
   static const _sorts = [
-    AlbumSort.newest,
-    AlbumSort.alphabeticalByName,
     AlbumSort.alphabeticalByArtist,
+    AlbumSort.alphabeticalByName,
+    AlbumSort.byYear,
     AlbumSort.recent,
-    AlbumSort.frequent,
-    AlbumSort.random,
+    AlbumSort.newest,
   ];
 
-  AlbumSort _sort = AlbumSort.newest;
+  static const _sortKey = 'jewelcase.albumSort';
+
+  AlbumSort _sort = AlbumSort.alphabeticalByArtist;
+
+  /// The last sort the user picked; the first load waits for it.
+  late final Future<void> _restored = _restoreSort();
+  bool _favoritesOnly = false;
   final _albums = <Album>[];
   bool _loading = false;
   bool _done = false;
@@ -50,6 +59,23 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
       _started = true;
       _libraryId = lib;
       _reset();
+    }
+  }
+
+  Future<void> _restoreSort() async {
+    try {
+      final saved = (await SharedPreferences.getInstance()).getString(_sortKey);
+      _sort = _sorts.firstWhere((s) => s.apiValue == saved, orElse: () => _sort);
+    } on Exception catch (e) {
+      debugPrint('Could not read the album sort: $e');
+    }
+  }
+
+  static Future<void> _saveSort(AlbumSort sort) async {
+    try {
+      await (await SharedPreferences.getInstance()).setString(_sortKey, sort.apiValue);
+    } on Exception catch (e) {
+      debugPrint('Could not save the album sort: $e');
     }
   }
 
@@ -73,18 +99,25 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
   Future<void> _loadMore() async {
     if (!mounted || _loading || _done || _error != null) return;
     final generation = _generation;
+    final client = context.read<SessionController>().client;
     setState(() => _loading = true);
     try {
-      final page = await context.read<SessionController>().client.getAlbumList(
-        _sort,
-        size: _pageSize,
-        offset: _albums.length,
-        musicFolderId: _libraryId,
-      );
+      await _restored;
+      if (!mounted || generation != _generation) return;
+      if (_favoritesOnly) {
+        final starred = await client.getStarred(musicFolderId: _libraryId);
+        if (!mounted || generation != _generation) return;
+        setState(() {
+          _albums.addAll(sortAlbums(starred.albums, _sort));
+          _done = true;
+        });
+        return;
+      }
+      final page = await client.getAlbumList(_sort, size: _pageSize, offset: _albums.length, musicFolderId: _libraryId);
       if (!mounted || generation != _generation) return;
       setState(() {
         _albums.addAll(page);
-        _done = page.length < _pageSize || _sort == AlbumSort.random;
+        _done = page.length < _pageSize;
       });
     } catch (e) {
       if (mounted && generation == _generation) setState(() => _error = e);
@@ -93,10 +126,27 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
     }
   }
 
+  void _setSort(AlbumSort sort) {
+    if (sort == _sort) return;
+    unawaited(_saveSort(sort));
+    setState(() {
+      _sort = sort;
+      _reset();
+    });
+  }
+
+  void _setFavoritesOnly(bool value) => setState(() {
+    _favoritesOnly = value;
+    _reset();
+  });
+
   @override
   Widget build(BuildContext context) {
     final pad = pagePadding(context);
     final theme = Theme.of(context);
+    // Hide albums un-hearted since the favorites were loaded.
+    final favorites = _favoritesOnly ? context.watch<FavoritesController>() : null;
+    final albums = favorites == null ? _albums : _albums.where((a) => favorites.isFavorite(a.id)).toList();
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -118,28 +168,37 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                         Text('Albums', style: theme.textTheme.headlineMedium),
                         const SizedBox(height: 16),
                       ],
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            for (final s in _sorts)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: ChoiceChip(
-                                  label: Text(s.label),
-                                  selected: s == _sort,
-                                  showCheckmark: false,
-                                  onSelected: (_) {
-                                    if (s == _sort && s != AlbumSort.random) return;
-                                    setState(() {
-                                      _sort = s;
-                                      _reset();
-                                    });
-                                  },
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          MenuAnchor(
+                            alignmentOffset: const Offset(0, 6),
+                            menuChildren: [
+                              for (final s in _sorts)
+                                MenuItemButton(
+                                  leadingIcon: SizedBox.square(
+                                    dimension: 20,
+                                    child: s == _sort
+                                        ? Icon(Icons.check_rounded, size: 20, color: theme.colorScheme.primary)
+                                        : null,
+                                  ),
+                                  onPressed: () => _setSort(s),
+                                  child: Text(s.label),
                                 ),
+                            ],
+                            builder: (context, menu, _) => ActionChip(
+                              tooltip: 'Sort by',
+                              avatar: const Icon(Icons.sort_rounded),
+                              label: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [Text(_sort.label), const Icon(Icons.arrow_drop_down_rounded, size: 20)],
                               ),
-                          ],
-                        ),
+                              onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+                            ),
+                          ),
+                          FavoritesFilterChip(selected: _favoritesOnly, onSelected: _setFavoritesOnly),
+                        ],
                       ),
                     ],
                   ),
@@ -150,10 +209,16 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                   hasScrollBody: false,
                   child: ErrorState(message: '$_error', onRetry: _retry),
                 )
-              else if (_albums.isEmpty && _done)
-                const SliverFillRemaining(
+              else if (albums.isEmpty && _done)
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: EmptyState(icon: Icons.album_outlined, title: 'No albums found'),
+                  child: _favoritesOnly
+                      ? const EmptyState(
+                          icon: Icons.favorite_border_rounded,
+                          title: 'No favorite albums',
+                          message: 'Use “Add to favorites” on any album to see it here.',
+                        )
+                      : const EmptyState(icon: Icons.album_outlined, title: 'No albums found'),
                 )
               else
                 SliverPadding(
@@ -161,8 +226,8 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                   sliver: SliverLayoutBuilder(
                     builder: (context, c) => SliverGrid.builder(
                       gridDelegate: cardGrid(c.crossAxisExtent),
-                      itemCount: _albums.length,
-                      itemBuilder: (context, i) => AlbumCard(album: _albums[i]),
+                      itemCount: albums.length,
+                      itemBuilder: (context, i) => AlbumCard(album: albums[i]),
                     ),
                   ),
                 ),

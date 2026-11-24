@@ -131,3 +131,35 @@ class _ShelfState extends State<Shelf> {
     );
   }
 }
+
+/// "Favorites" toggle for filtering a library list down to starred items.
+class FavoritesFilterChip extends StatelessWidget {
+  const FavoritesFilterChip({super.key, required this.selected, required this.onSelected});
+
+  final bool selected;
+  final ValueChanged<bool> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // The default label and icon colors are too light on the selected fill.
+    final fg = selected ? scheme.onPrimary : scheme.onSurface;
+    return FilterChip(
+      // The label's glyphs sit below the center of its line box, so the heart
+      // drops 1px to line up with the text optically.
+      avatar: Transform.translate(
+        offset: const Offset(0, 1),
+        child: Icon(
+          selected ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          color: selected ? scheme.onPrimary : scheme.primary,
+        ),
+      ),
+      label: const Text('Favorites'),
+      labelStyle: Theme.of(context).textTheme.labelLarge
+          ?.copyWith(color: fg, fontWeight: selected ? FontWeight.w700 : null),
+      selected: selected,
+      showCheckmark: false,
+      onSelected: onSelected,
+    );
+  }
+}

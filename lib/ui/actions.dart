@@ -12,6 +12,7 @@ import 'format.dart';
 import 'navigation.dart';
 import 'screens/album_detail_screen.dart';
 import 'screens/artist_detail_screen.dart';
+import 'screens/favorite_songs_screen.dart';
 import 'screens/playlist_detail_screen.dart';
 
 class MenuAction {
@@ -32,6 +33,12 @@ String playlistRouteName(String id) => 'playlist/$id';
 
 void openPlaylist(BuildContext context, Playlist p) =>
     context.read<NavController>().push(PlaylistDetailScreen(playlist: p), name: playlistRouteName(p.id));
+
+/// Route name for the automatic Favorite songs playlist.
+const favoriteSongsRouteName = 'playlist:favorites';
+
+void openFavoriteSongs(BuildContext context) =>
+    context.read<NavController>().push(const FavoriteSongsScreen(), name: favoriteSongsRouteName);
 
 void toast(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)
