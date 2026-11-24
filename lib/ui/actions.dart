@@ -51,10 +51,14 @@ Future<void> guarded(BuildContext context, Future<void> Function() action, {Stri
 }
 
 Future<void> showActionMenu(BuildContext context, Offset globalPosition, List<MenuAction> actions) async {
-  final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+  // The menu is laid out in its navigator's overlay. Inside a section's nested
+  // navigator that overlay doesn't start at the window origin (the sidebar sits
+  // to its left), so the global position has to be made local to it.
+  final overlay = Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
+  final local = overlay.globalToLocal(globalPosition);
   final selected = await showMenu<MenuAction>(
     context: context,
-    position: RelativeRect.fromRect(globalPosition & const Size(1, 1), Offset.zero & overlay.size),
+    position: RelativeRect.fromRect(local & const Size(1, 1), Offset.zero & overlay.size),
     items: [
       for (final a in actions)
         PopupMenuItem(
