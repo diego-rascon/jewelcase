@@ -127,8 +127,13 @@ class SessionController extends ChangeNotifier {
   }
 
   Future<void> _loadLibraries() async {
+    final requested = _client;
+    if (requested == null) return;
     try {
-      _libraries = await client.getMusicFolders();
+      final libraries = await requested.getMusicFolders();
+      // Dropped if the user signed out or switched servers meanwhile.
+      if (!identical(requested, _client)) return;
+      _libraries = libraries;
       notifyListeners();
     } catch (e) {
       debugPrint('Could not load libraries: $e');

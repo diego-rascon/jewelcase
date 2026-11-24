@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:jewelcase/state/session.dart';
@@ -138,5 +139,26 @@ void main() {
     await afterSignOut.restore();
     expect(afterSignOut.isSignedIn, isFalse);
     expect(afterSignOut.libraryId, isNull);
+  });
+
+  test('drops a library list that arrives after signing out', () async {
+    final folders = Completer<http.Response>();
+    final session = SessionController(
+      httpClient: () => MockClient((req) async => req.url.path.endsWith('/getMusicFolders') ? folders.future : _ok({})),
+    );
+    await session.signIn(url: 'music.example.com', username: 'jo', password: 'pw');
+    await session.signOut();
+    folders.complete(
+      _ok({
+        'musicFolders': {
+          'musicFolder': [
+            {'id': 1, 'name': 'Music'},
+            {'id': 2, 'name': 'Audiobooks'},
+          ],
+        },
+      }),
+    );
+    await pumpEventQueue();
+    expect(session.libraries, isEmpty);
   });
 }
