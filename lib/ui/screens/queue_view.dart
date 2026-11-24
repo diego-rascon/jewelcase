@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../api/models.dart';
 import '../../audio/player_controller.dart';
+import '../actions.dart';
 import '../format.dart';
 import '../widgets/cover_art.dart';
 
@@ -72,7 +73,7 @@ class QueueView extends StatelessWidget {
             itemCount: upNext.length,
             onReorderItem: (from, to) {
               if (from == to) return;
-              unawaited(p.move(upNext[from].$1, upNext[to].$1));
+              unawaited(guarded(context, () => p.move(upNext[from].$1, upNext[to].$1)));
             },
             itemBuilder: (context, i) {
               final (index, song) = upNext[i];

@@ -412,7 +412,7 @@ class _ThinProgressState extends State<_ThinProgress> {
     return LayoutBuilder(
       builder: (context, constraints) {
         double fraction(Offset local) => (local.dx / constraints.maxWidth).clamp(0.0, 1.0);
-        void seek(double f) => unawaited(p.seek(p.duration * f));
+        void seek(double f) => unawaited(guarded(context, () => p.seek(p.duration * f)));
         return MouseRegion(
           cursor: SystemMouseCursors.click,
           onEnter: (_) => setState(() => _hover = true),

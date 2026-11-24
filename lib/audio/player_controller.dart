@@ -47,7 +47,7 @@ class PlayerController extends ChangeNotifier {
   void attach(SubsonicClient? client) {
     if (identical(client, _client)) return;
     _client = client;
-    unawaited(stop());
+    unawaited(stop().catchError((Object e) => debugPrint('Could not stop playback: $e')));
   }
 
   // ---- State ------------------------------------------------------------
@@ -93,7 +93,7 @@ class PlayerController extends ChangeNotifier {
       await audio.shuffle();
       await audio.setShuffleModeEnabled(true);
     }
-    unawaited(audio.play());
+    _startPlayback();
   }
 
   Future<void> playNext(List<Song> list) async {
@@ -115,13 +115,13 @@ class PlayerController extends ChangeNotifier {
     }
   }
 
-  Future<void> togglePlay() => audio.playing ? audio.pause() : audio.play();
-  Future<void> play() => audio.play();
+  Future<void> togglePlay() async => audio.playing ? await audio.pause() : _startPlayback();
+  Future<void> play() async => _startPlayback();
   Future<void> pause() => audio.pause();
   Future<void> seek(Duration position) => audio.seek(position);
   Future<void> jumpTo(int index) async {
     await audio.seek(Duration.zero, index: index);
-    if (!audio.playing) unawaited(audio.play());
+    if (!audio.playing) _startPlayback();
   }
 
   Future<void> next() async {
@@ -160,6 +160,10 @@ class PlayerController extends ChangeNotifier {
   }
 
   // ---- Internals --------------------------------------------------------
+
+  // just_audio's play() only completes once playback pauses or stops, so it
+  // isn't awaited. Its errors also arrive on playbackEventStream (_onError).
+  void _startPlayback() => unawaited(audio.play().catchError((Object _) {}));
 
   AudioSource _source(SubsonicClient client, Song song) => AudioSource.uri(client.streamUrl(song.id), tag: song);
 

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../audio/player_controller.dart';
+import '../actions.dart';
 import '../format.dart';
 
 /// Seek bar with elapsed / remaining labels. Holds the drag position locally
@@ -54,7 +55,7 @@ class _SeekBarState extends State<SeekBar> {
               max: max,
               onChanged: (v) => setState(() => _dragValue = v),
               onChangeEnd: (v) {
-                unawaited(player.seek(Duration(milliseconds: v.round())));
+                unawaited(guarded(context, () => player.seek(Duration(milliseconds: v.round()))));
                 setState(() => _dragValue = null);
               },
             ),

@@ -359,11 +359,11 @@ class PlaybackShortcuts extends StatelessWidget {
         final key = event.logicalKey;
         final mod = HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed;
         if (key == LogicalKeyboardKey.space || key == LogicalKeyboardKey.mediaPlayPause) {
-          unawaited(player.togglePlay());
+          unawaited(guarded(context, player.togglePlay));
         } else if (key == LogicalKeyboardKey.mediaTrackNext || (mod && key == LogicalKeyboardKey.arrowRight)) {
-          unawaited(player.next());
+          unawaited(guarded(context, player.next));
         } else if (key == LogicalKeyboardKey.mediaTrackPrevious || (mod && key == LogicalKeyboardKey.arrowLeft)) {
-          unawaited(player.previous());
+          unawaited(guarded(context, player.previous));
         } else {
           return KeyEventResult.ignored;
         }
