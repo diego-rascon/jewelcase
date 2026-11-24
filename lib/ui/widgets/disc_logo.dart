@@ -1,8 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:material_ui/material_ui.dart';
 
-/// The Jewelcase mark: a compact disc with a warm, iridescent sheen.
+/// The Jewelcase mark: a compact disc in the theme's warm coral, with a
+/// single soft sheen and a couple of grooves.
 class DiscLogo extends StatelessWidget {
   const DiscLogo({super.key, this.size = 32});
 
@@ -23,19 +22,9 @@ class DiscPainter extends CustomPainter {
   /// Paints only the disc's shape in white, for Android's themed icons.
   final bool silhouette;
 
-  // A CD's rainbow, kept within the app's warm coral range. It goes round
-  // twice: on a real disc the sheen repeats on opposite sides.
-  static const _sheen = [
-    Color(0xFFFF6B5E), // coral, the theme's seed color
-    Color(0xFFFFB38A), // apricot
-    Color(0xFFFF8FB8), // rose
-    Color(0xFFB9A2FF), // lilac
-    Color(0xFFFF6B5E),
-    Color(0xFFFFB38A),
-    Color(0xFFFF8FB8),
-    Color(0xFFB9A2FF),
-    Color(0xFFFF6B5E),
-  ];
+  // From the theme's palette: its primary (soft salmon) down to the coral
+  // seed color, lit from the top left.
+  static const _body = [Color(0xFFFFC1A8), Color(0xFFFF8A78), Color(0xFFF2584F)];
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -47,8 +36,8 @@ class DiscPainter extends CustomPainter {
       ..addOval(circle(outer))
       ..addOval(circle(inner));
 
-    final hole = r * 0.15;
-    final hub = r * 0.36;
+    final hole = r * 0.14;
+    final hub = r * 0.34;
     final disc = ring(r, hole);
     if (silhouette) {
       canvas.drawPath(disc, Paint()..color = Colors.white);
@@ -59,38 +48,35 @@ class DiscPainter extends CustomPainter {
     canvas.drawPath(
       disc,
       Paint()
-        ..shader = const SweepGradient(colors: _sheen, transform: GradientRotation(-math.pi / 3)).createShader(bounds),
+        ..shader = const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: _body,
+        ).createShader(bounds),
     );
-    // Light catching the surface in two opposite bands.
-    const glint = Color(0x66FFFFFF);
-    const clear = Color(0x00FFFFFF);
+    // One soft band of light, repeated on the opposite side as on a real disc.
+    const glint = Color(0x73FFF1E8);
+    const clear = Color(0x00FFF1E8);
     canvas.drawPath(
       disc,
       Paint()
         ..shader = const SweepGradient(
           colors: [clear, glint, clear, clear, glint, clear],
-          stops: [0.05, 0.13, 0.21, 0.55, 0.63, 0.71],
+          stops: [0.03, 0.10, 0.18, 0.53, 0.60, 0.68],
         ).createShader(bounds),
     );
-    // Depth: slightly darker toward the rim.
-    canvas.drawPath(
-      disc,
-      Paint()
-        ..shader = const RadialGradient(
-          colors: [Color(0x00000000), Color(0x33000000)],
-          stops: [0.55, 1],
-        ).createShader(bounds),
-    );
-    // Clear plastic hub around the hole, with thin edges.
-    canvas.drawPath(ring(hub, hole), Paint()..color = const Color(0xB3141418));
-    final edge = Paint()
+    // Detail: one faint groove where the data area ends.
+    final line = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = r * 0.03
-      ..color = const Color(0x59FFFFFF);
-    canvas.drawCircle(center, hub, edge);
-    edge.color = const Color(0x40FFFFFF);
-    canvas.drawCircle(center, hole + edge.strokeWidth / 2, edge);
-    canvas.drawCircle(center, r - edge.strokeWidth / 2, edge);
+      ..strokeWidth = r * 0.018
+      ..color = const Color(0x24000000);
+    canvas.drawCircle(center, r * 0.86, line);
+    // Clear plastic hub around the hole.
+    canvas.drawPath(ring(hub, hole), Paint()..color = const Color(0x40FFFFFF));
+    line
+      ..strokeWidth = r * 0.024
+      ..color = const Color(0x2E000000);
+    canvas.drawCircle(center, hub, line);
   }
 
   @override

@@ -17,11 +17,14 @@ enum _Frame {
   /// Square, edge to edge; the platform applies its own mask (iOS, maskable web icons).
   fullBleed(0.62),
 
-  /// Rounded square filling the canvas (Windows, web, legacy Android).
+  /// Rounded square filling the canvas (web, legacy Android).
   rounded(0.70),
 
   /// macOS template: an inset rounded square with room for its shadow.
   macos(0.56),
+
+  /// Just the disc on a transparent canvas, nearly edge to edge (Windows).
+  bare(0.92),
 
   /// Android adaptive-icon layers, kept inside the 66/108 dp safe zone.
   foreground(0.56),
@@ -44,7 +47,7 @@ void _paint(Canvas canvas, double s, _Frame frame) {
       Rect.fromCenter(center: full.center, width: s * 824 / 1024, height: s * 824 / 1024),
       Radius.circular(s * 185 / 1024),
     ),
-    _Frame.foreground || _Frame.silhouette => null,
+    _Frame.bare || _Frame.foreground || _Frame.silhouette => null,
   };
   if (plate != null) {
     if (frame == _Frame.macos) {
@@ -70,12 +73,19 @@ void _paint(Canvas canvas, double s, _Frame frame) {
   final d = s * frame.discScale;
   final disc = Rect.fromCenter(center: full.center, width: d, height: d);
   if (frame != _Frame.silhouette) {
-    canvas.drawCircle(
-      disc.center + Offset(0, d * 0.03),
-      d / 2,
+    // Without a plate the disc nearly touches the edges, so its shadow stays
+    // tight enough to fit in the margin, and skips the hole so the desktop
+    // shows through it.
+    final bare = frame == _Frame.bare;
+    final shadow = Rect.fromCircle(center: disc.center + Offset(0, d * (bare ? 0.015 : 0.03)), radius: d / 2);
+    canvas.drawPath(
+      Path()
+        ..fillType = PathFillType.evenOdd
+        ..addOval(shadow)
+        ..addOval(bare ? Rect.fromCircle(center: shadow.center, radius: d / 2 * 0.24) : Rect.zero),
       Paint()
-        ..color = const Color(0x66000000)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, d * 0.04),
+        ..color = Color(bare ? 0x59000000 : 0x66000000)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, d * (bare ? 0.015 : 0.04)),
     );
   }
   canvas
@@ -222,7 +232,7 @@ void main() {
 
     File('windows/runner/resources/app_icon.ico').writeAsBytesSync(
       _encodeIco([
-        for (final px in const [16, 24, 32, 48, 64, 128, 256]) (px, await _render(px, _Frame.rounded)),
+        for (final px in const [16, 24, 32, 48, 64, 128, 256]) (px, await _render(px, _Frame.bare)),
       ]),
     );
   });
