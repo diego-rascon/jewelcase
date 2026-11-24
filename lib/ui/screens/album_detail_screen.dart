@@ -76,16 +76,9 @@ class _AlbumView extends StatelessWidget {
 
     return DetailPage(
       cover: CoverArt(id: album.coverArt, seed: album.id, radius: 12),
+      tintCoverId: album.coverArt,
       title: album.name,
-      subtitle: album.artist == null
-          ? null
-          : InkWell(
-              onTap: album.artistId == null ? null : () => openArtist(context, album.artistId!),
-              child: Text(
-                album.artist!,
-                style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.primary),
-              ),
-            ),
+      subtitle: album.artist == null ? null : _ArtistLink(album: album),
       meta: joinDot([album.year, album.genre, plural(songs.length, 'song'), formatLongDuration(totalDuration)]),
       onPlay: songs.isEmpty ? null : () => player.playSongs(songs),
       onShuffle: songs.isEmpty ? null : () => player.playSongs(songs, shuffle: true),
@@ -98,6 +91,22 @@ class _AlbumView extends StatelessWidget {
           child: PagedSliver(sliver: SliverList.list(children: rows)),
         ),
       ],
+    );
+  }
+}
+
+/// The album's artist, in the page's art-tinted primary color.
+class _ArtistLink extends StatelessWidget {
+  const _ArtistLink({required this.album});
+
+  final Album album;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: album.artistId == null ? null : () => openArtist(context, album.artistId!),
+      child: Text(album.artist!, style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.primary)),
     );
   }
 }

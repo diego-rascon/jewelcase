@@ -79,6 +79,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
 
         return DetailPage(
           cover: CoverArt(id: p.coverArt, seed: p.id, radius: 12, icon: Icons.queue_music_rounded),
+          tintCoverId: p.coverArt,
           title: p.name,
           subtitle: p.comment == null || p.comment!.isEmpty
               ? null

@@ -84,7 +84,7 @@ The app ID is `app.jewelcase.player` on every platform; the Dart package is `jew
 - Anything driven by the position stream sits behind a `RepaintBoundary`, as the seek bar and progress bar do, so it doesn't repaint the blurred Now Playing backdrop.
 - Keyboard shortcuts (`PlaybackShortcuts` in `shell.dart`) sit above the root navigator: Space for play/pause, Ctrl/⌘+←/→ for previous/next. They're ignored while a text field has focus.
 - Artwork goes through `CoverArt`, which handles caching and a generated placeholder. It requests its laid-out size × device pixel ratio unless `size` is given.
-- The theme is dark-only and neutral (`buildTheme()`): white and untinted grays in the spirit of Apple's dark mode, with white as the accent. Content sits on `surface`; chrome (the sidebar, the phone tab bar) uses the one-step-lighter `surfaceContainerLow`. Don't add hues; red is reserved for errors. Only Now Playing takes colors from the art (`ArtTinted`).
+- The theme is dark-only and neutral (`buildTheme()`): white and untinted grays in the spirit of Apple's dark mode, with white as the accent. Content sits on `surface`; chrome (the sidebar, the phone tab bar) uses the one-step-lighter `surfaceContainerLow`. Don't add hues; red is reserved for errors. Only Now Playing and the album and playlist page headers take colors from the art (`ArtTinted`). `DetailPage(tintCoverId: ...)` puts the art's color in a gradient behind the header and makes it the `primary` of the Play button and the subtitle; the rest of the page stays neutral.
 
 ## Tests
 

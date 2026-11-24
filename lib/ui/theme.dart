@@ -3,8 +3,8 @@ import 'package:material_ui/material_ui.dart';
 /// The app is dark-only and neutral: white and soft, untinted grays in the
 /// spirit of Apple's dark mode. Content sits on a mid-dark gray; chrome (the
 /// sidebar, the phone tab bar) is one step lighter. White is the accent
-/// (selection, active controls, filled buttons). Only Now Playing takes
-/// colors from the art.
+/// (selection, active controls, filled buttons). Only Now Playing and the
+/// album and playlist page headers take colors from the art.
 ThemeData buildTheme() {
   final scheme =
       ColorScheme.fromSeed(
