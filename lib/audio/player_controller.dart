@@ -33,7 +33,6 @@ class PlayerController extends ChangeNotifier {
   late final List<StreamSubscription<Object?>> _subs;
 
   SubsonicClient? _client;
-  String? _lastError;
 
   // Derived from the last sequence state, rebuilt only when it changes.
   SequenceState? _state;
@@ -78,7 +77,6 @@ class PlayerController extends ChangeNotifier {
   bool get shuffle => audio.shuffleModeEnabled;
   LoopMode get loopMode => audio.loopMode;
   double get volume => audio.volume;
-  String? get lastError => _lastError;
 
   Stream<Duration> get position => audio.positionStream;
   Duration get duration => audio.duration ?? current?.duration ?? Duration.zero;
@@ -88,7 +86,6 @@ class PlayerController extends ChangeNotifier {
   Future<void> playSongs(List<Song> list, {int index = 0, bool shuffle = false}) async {
     final client = _client;
     if (client == null || list.isEmpty) return;
-    _lastError = null;
     final start = shuffle ? Random().nextInt(list.length) : index.clamp(0, list.length - 1);
     await audio.setShuffleModeEnabled(false);
     await audio.setAudioSources([for (final s in list) _source(client, s)], initialIndex: start, preload: false);
@@ -221,11 +218,9 @@ class PlayerController extends ChangeNotifier {
     }
   }
 
-  void _onError(Object error, StackTrace _) {
-    _lastError = '$error';
-    debugPrint('Playback error: $error');
-    notifyListeners();
-  }
+  // Debug output only: the error can include the stream URL, which carries
+  // the auth token.
+  void _onError(Object error, StackTrace _) => debugPrint('Playback error: $error');
 
   @override
   void dispose() {
