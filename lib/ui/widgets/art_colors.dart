@@ -59,10 +59,12 @@ class _ArtTintedState extends State<ArtTinted> {
     if (old.coverId != widget.coverId) unawaited(_resolve());
   }
 
+  // The previous scheme stays up until the new one is ready, so the colors
+  // change once. A cover without usable art falls back to the neutral look.
   Future<void> _resolve() async {
     final id = widget.coverId;
     final scheme = await ArtColors.resolve(context, id);
-    if (mounted && id == widget.coverId && scheme != null) setState(() => _scheme = scheme);
+    if (mounted && id == widget.coverId && scheme != _scheme) setState(() => _scheme = scheme);
   }
 
   @override
