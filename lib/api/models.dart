@@ -285,3 +285,45 @@ List<Album> sortAlbums(List<Album> albums, AlbumSort sort) {
     });
   return [for (final (_, album) in indexed) album];
 }
+
+enum SongSortField { title, artist, album, duration }
+
+/// A column sort for song lists; `null` stands for the list's own order.
+typedef SongSort = ({SongSortField field, bool descending});
+
+/// Sorts [songs] by [sort], pairing each song with its original position
+/// (playlists edit by position). Ties keep the original order.
+List<(int, Song)> sortSongs(List<Song> songs, SongSort? sort) {
+  final indexed = songs.indexed.toList();
+  if (sort == null) return indexed;
+  String key(String? s) => (s ?? '').toLowerCase();
+  // Keys are computed once up front: the Songs screen sorts whole libraries.
+  final titles = [for (final s in songs) key(s.title)];
+  final artists = [for (final s in songs) key(s.artist)];
+  final albums = [for (final s in songs) key(s.album)];
+  int albumOrder(int a, int b) {
+    var c = albums[a].compareTo(albums[b]);
+    if (c == 0) c = (songs[a].discNumber ?? 0).compareTo(songs[b].discNumber ?? 0);
+    if (c == 0) c = (songs[a].track ?? 0).compareTo(songs[b].track ?? 0);
+    return c;
+  }
+
+  final int Function(int, int) compare = switch (sort.field) {
+    SongSortField.title => (a, b) {
+      final c = titles[a].compareTo(titles[b]);
+      return c != 0 ? c : artists[a].compareTo(artists[b]);
+    },
+    SongSortField.artist => (a, b) {
+      final c = artists[a].compareTo(artists[b]);
+      return c != 0 ? c : albumOrder(a, b);
+    },
+    SongSortField.album => albumOrder,
+    SongSortField.duration => (a, b) => songs[a].duration.compareTo(songs[b].duration),
+  };
+  final sign = sort.descending ? -1 : 1;
+  // List.sort isn't stable, so break ties by original position.
+  return indexed..sort((a, b) {
+    final c = compare(a.$1, b.$1) * sign;
+    return c != 0 ? c : a.$1.compareTo(b.$1);
+  });
+}

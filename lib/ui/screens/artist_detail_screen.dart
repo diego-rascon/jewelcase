@@ -136,16 +136,19 @@ class _ArtistViewState extends State<_ArtistView> {
               ),
             ),
           ),
-          PagedSliver(
-            sliver: SliverList.list(
-              children: [
-                for (final (i, s) in visibleTop.indexed)
-                  SongTile(
-                    song: s,
-                    showArtist: false,
-                    onTap: () => player.playSongs(topSongs, index: i),
-                  ),
-              ],
+          SongListScope(
+            child: PagedSliver(
+              sliver: SliverList.list(
+                children: [
+                  for (final (i, s) in visibleTop.indexed)
+                    SongTile(
+                      song: s,
+                      index: i,
+                      showArtist: false,
+                      onTap: () => player.playSongs(topSongs, index: i),
+                    ),
+                ],
+              ),
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 28)),

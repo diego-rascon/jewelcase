@@ -11,7 +11,7 @@ class DetailPage extends StatelessWidget {
     super.key,
     required this.coverId,
     required this.cover,
-    required this.kicker,
+    this.kicker,
     required this.title,
     this.subtitle,
     this.meta,
@@ -23,7 +23,9 @@ class DetailPage extends StatelessWidget {
 
   final String? coverId;
   final Widget cover;
-  final String kicker;
+
+  /// Small all-caps label above the title (the artist page's "ARTIST").
+  final String? kicker;
   final String title;
   final Widget? subtitle;
   final String? meta;
@@ -65,11 +67,13 @@ class DetailPage extends StatelessWidget {
       crossAxisAlignment: wide ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          kicker.toUpperCase(),
-          style: theme.textTheme.labelMedium?.copyWith(letterSpacing: 1.6, color: theme.colorScheme.onSurfaceVariant),
-        ),
-        const SizedBox(height: 6),
+        if (kicker != null) ...[
+          Text(
+            kicker!.toUpperCase(),
+            style: theme.textTheme.labelMedium?.copyWith(letterSpacing: 1.6, color: theme.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 6),
+        ],
         Text(
           title,
           textAlign: wide ? TextAlign.start : TextAlign.center,

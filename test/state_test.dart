@@ -129,4 +129,38 @@ void main() {
 
     test('keeps the order for sorts with no local equivalent', () => expect(ids(AlbumSort.random), ['a', 'b', 'c']));
   });
+
+  group('sortSongs', () {
+    const songs = [
+      Song(id: 'a', title: 'beta', artist: 'Zed', album: 'Two', track: 2, duration: Duration(seconds: 200)),
+      Song(id: 'b', title: 'Alpha', artist: 'amy', album: 'one', track: 1, duration: Duration(seconds: 100)),
+      Song(id: 'c', title: 'gamma', artist: 'Amy', album: 'One', track: 3, duration: Duration(seconds: 100)),
+      Song(id: 'd', title: 'alpha', artist: 'Amy', album: 'One', track: 2, duration: Duration(seconds: 300)),
+    ];
+    List<String> ids(SongSortField field, {bool descending = false}) => [
+      for (final (_, s) in sortSongs(songs, (field: field, descending: descending))) s.id,
+    ];
+
+    test('no sort keeps the order and positions', () {
+      expect([for (final (i, s) in sortSongs(songs, null)) '$i${s.id}'], ['0a', '1b', '2c', '3d']);
+    });
+
+    test('by title, ignoring case, then artist', () => expect(ids(SongSortField.title), ['b', 'd', 'a', 'c']));
+
+    test('by artist, then album track order', () => expect(ids(SongSortField.artist), ['b', 'd', 'c', 'a']));
+
+    test('by album in track order', () => expect(ids(SongSortField.album), ['b', 'd', 'c', 'a']));
+
+    test('descending reverses the order but ties keep theirs', () {
+      expect(ids(SongSortField.duration), ['b', 'c', 'a', 'd']);
+      expect(ids(SongSortField.duration, descending: true), ['d', 'a', 'b', 'c']);
+    });
+
+    test('keeps each song\'s original position', () {
+      expect(
+        [for (final (i, s) in sortSongs(songs, (field: SongSortField.title, descending: false))) '$i${s.id}'],
+        ['1b', '3d', '0a', '2c'],
+      );
+    });
+  });
 }

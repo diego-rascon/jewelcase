@@ -155,14 +155,17 @@ class _Results extends StatelessWidget {
           ),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: pad - 10),
-            child: Column(
-              children: [
-                for (final (i, s) in songs.take(8).indexed)
-                  SongTile(
-                    song: s,
-                    onTap: () => player.playSongs(songs, index: i),
-                  ),
-              ],
+            child: SongListScope(
+              child: Column(
+                children: [
+                  for (final (i, s) in songs.take(8).indexed)
+                    SongTile(
+                      song: s,
+                      index: i,
+                      onTap: () => player.playSongs(songs, index: i),
+                    ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 28),

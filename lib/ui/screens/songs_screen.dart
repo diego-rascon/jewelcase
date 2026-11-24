@@ -23,7 +23,15 @@ class SongsScreen extends StatefulWidget {
 class _SongsScreenState extends State<SongsScreen> {
   static const _pageSize = 100;
 
+  /// Page size while loading everything for a sorted view.
+  static const _bulkPageSize = 500;
+
   final _songs = <Song>[];
+
+  /// The server can't sort songs, so a sorted view loads the whole library
+  /// first and sorts it here.
+  SongSort? _sort;
+  List<Song>? _sorted;
   bool _loading = false;
   bool _done = false;
   Object? _error;
@@ -43,6 +51,7 @@ class _SongsScreenState extends State<SongsScreen> {
       _libraryId = lib;
       _generation++;
       _songs.clear();
+      _sorted = null;
       _loading = false;
       _done = false;
       _error = null;
@@ -61,23 +70,43 @@ class _SongsScreenState extends State<SongsScreen> {
   Future<void> _loadMore() async {
     if (!mounted || _loading || _done || _error != null) return;
     final generation = _generation;
+    final size = _sort == null ? _pageSize : _bulkPageSize;
     setState(() => _loading = true);
     try {
       final page = await context.read<SessionController>().client.getSongs(
-        size: _pageSize,
+        size: size,
         offset: _songs.length,
         musicFolderId: _libraryId,
       );
       if (!mounted || generation != _generation) return;
       setState(() {
         _songs.addAll(page);
-        _done = page.length < _pageSize;
+        _done = page.length < size;
       });
     } catch (e) {
       if (mounted && generation == _generation) setState(() => _error = e);
     } finally {
       if (mounted && generation == _generation) setState(() => _loading = false);
     }
+    // A sorted view can't show anything until it has every song.
+    if (mounted && generation == _generation && _sort != null) await _loadMore();
+  }
+
+  void _setSort(SongSort? sort) {
+    setState(() {
+      _sort = sort;
+      _sorted = null;
+    });
+    if (sort != null) unawaited(_loadMore());
+  }
+
+  /// What the list shows: the songs in server order, or once everything is
+  /// loaded, sorted by [_sort]. Empty while a sorted view is still loading.
+  List<Song> get _visible {
+    final sort = _sort;
+    if (sort == null) return _songs;
+    if (!_done) return const [];
+    return _sorted ??= [for (final (_, s) in sortSongs(_songs, sort)) s];
   }
 
   @override
@@ -85,6 +114,8 @@ class _SongsScreenState extends State<SongsScreen> {
     final player = context.read<PlayerController>();
     final pad = pagePadding(context);
     final theme = Theme.of(context);
+    final songs = _visible;
+    final loadingAll = _sort != null && !_done;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -112,22 +143,45 @@ class _SongsScreenState extends State<SongsScreen> {
                   hasScrollBody: false,
                   child: EmptyState(icon: Icons.music_note_outlined, title: 'No songs found'),
                 )
-              else
+              else ...[
                 SliverPadding(
                   padding: EdgeInsets.symmetric(horizontal: pad - 10),
-                  sliver: SliverList.builder(
-                    itemCount: _songs.length,
-                    itemBuilder: (context, i) => SongTile(
-                      song: _songs[i],
-                      onTap: () => player.playSongs(List.of(_songs), index: i),
+                  sliver: SliverToBoxAdapter(
+                    child: SongListHeader(sort: _sort, onSort: _setSort),
+                  ),
+                ),
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(horizontal: pad - 10),
+                  sliver: SongListScope(
+                    child: SliverList.builder(
+                      itemCount: songs.length,
+                      itemBuilder: (context, i) => SongTile(
+                        song: songs[i],
+                        index: i,
+                        artistColumn: true,
+                        onTap: () => player.playSongs(List.of(songs), index: i),
+                      ),
                     ),
                   ),
                 ),
+              ],
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
                   child: Center(
-                    child: _loading
+                    child: loadingAll && _error == null
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const CircularProgressIndicator(strokeCap: StrokeCap.round),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Loading all songs to sort… ${_songs.length}',
+                                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                              ),
+                            ],
+                          )
+                        : _loading
                         ? const CircularProgressIndicator(strokeCap: StrokeCap.round)
                         : _error != null && _songs.isNotEmpty
                         ? FilledButton.tonal(onPressed: _retry, child: const Text('Couldn’t load more · Retry'))

@@ -77,6 +77,7 @@ The app ID is `app.jewelcase.player` on every platform; the Dart package is `jew
 - Server-backed screens load data with `AsyncView` (`widgets/async_view.dart`). It handles loading and error states and reloads when `deps` change. Screens pass `deps: [session.libraryId]` so that switching library refetches.
 - Paged or incremental loads, such as `AlbumsScreen`, use a generation counter so responses for an outdated sort or library are dropped.
 - Wrap user-triggered API and player calls in `guarded()` from `ui/actions.dart`, which shows errors as a snackbar. Context menus use `MenuAction` with `showActionMenu` or `MoreButton`.
+- Song lists outside albums (playlists, Favorite songs, Songs) put a `SongListHeader` above their `SongTile`s. It shares the tiles' column layout (`_SongRow`), and its column sorts go through `sortSongs()`, which keeps each song's original position for removal by position. The server can't sort songs, so a sorted Songs screen loads the whole library first.
 - Build long lists lazily (`ListView.builder`, `SliverList.builder`, `SliverGrid.builder`). Card grids use `cardGrid()`, which already handles narrow widths.
 - Anything driven by the position stream sits behind a `RepaintBoundary`, as the seek bar and progress bar do, so it doesn't repaint the blurred Now Playing backdrop.
 - Keyboard shortcuts (`PlaybackShortcuts` in `shell.dart`) sit above the root navigator: Space for play/pause, Ctrl/⌘+←/→ for previous/next. They're ignored while a text field has focus.

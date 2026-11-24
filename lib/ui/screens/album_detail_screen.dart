@@ -44,7 +44,8 @@ class _AlbumView extends StatelessWidget {
     final rows = <Widget>[];
     int? disc;
     for (final (i, s) in songs.indexed) {
-      if (multiDisc && s.discNumber != disc) {
+      final startsDisc = multiDisc && s.discNumber != disc;
+      if (startsDisc) {
         disc = s.discNumber;
         rows.add(
           Padding(
@@ -62,6 +63,9 @@ class _AlbumView extends StatelessWidget {
       rows.add(
         SongTile(
           song: s,
+          // Indexed by row, so a disc header breaks adjacency between discs.
+          index: rows.length,
+          startsSection: startsDisc,
           showCover: false,
           showAlbum: false,
           showArtist: s.artist != album.artist,
@@ -73,7 +77,6 @@ class _AlbumView extends StatelessWidget {
     return DetailPage(
       coverId: album.coverArt,
       cover: CoverArt(id: album.coverArt, seed: album.id, radius: 12),
-      kicker: 'Album',
       title: album.name,
       subtitle: album.artist == null
           ? null
@@ -91,7 +94,11 @@ class _AlbumView extends StatelessWidget {
         FavoriteButton(id: album.id, kind: FavoriteKind.album, size: 26),
         MoreButton(actions: () => albumActions(context, album, includePlay: false)),
       ],
-      slivers: [PagedSliver(sliver: SliverList.list(children: rows))],
+      slivers: [
+        SongListScope(
+          child: PagedSliver(sliver: SliverList.list(children: rows)),
+        ),
+      ],
     );
   }
 }
