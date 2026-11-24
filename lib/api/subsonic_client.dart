@@ -148,6 +148,8 @@ class SubsonicClient {
   Future<List<Album>> getAlbumList(AlbumSort sort, {int size = 40, int offset = 0, String? musicFolderId}) async {
     final r = await _get('getAlbumList2', {
       'type': sort.apiValue,
+      // A reversed range makes Navidrome list newest years first.
+      if (sort == AlbumSort.byYear) ...{'fromYear': 9999, 'toYear': 0},
       'size': size,
       'offset': offset,
       'musicFolderId': musicFolderId,

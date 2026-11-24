@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:jewelcase/api/models.dart';
 import 'package:jewelcase/api/subsonic_client.dart';
 import 'package:jewelcase/audio/player_controller.dart';
 import 'package:jewelcase/state/favorites.dart';
@@ -96,5 +97,36 @@ void main() {
     expect(scrobbleThreshold(const Duration(seconds: 29)), isNull);
     expect(scrobbleThreshold(const Duration(minutes: 3)), const Duration(seconds: 90));
     expect(scrobbleThreshold(const Duration(minutes: 20)), const Duration(minutes: 4));
+  });
+
+  group('sortAlbums', () {
+    final albums = [
+      Album(id: 'a', name: 'beta', artist: 'Zed', year: 1999, created: DateTime(2024, 1, 1)),
+      Album(id: 'b', name: 'Alpha', artist: 'amy', year: 2010, played: DateTime(2025, 6, 1)),
+      Album(
+        id: 'c',
+        name: 'gamma',
+        artist: 'Amy',
+        year: 2001,
+        created: DateTime(2025, 1, 1),
+        played: DateTime(2025, 1, 1),
+      ),
+    ];
+    List<String> ids(AlbumSort sort) => [for (final a in sortAlbums(albums, sort)) a.id];
+
+    test('by title and artist, ignoring case', () {
+      expect(ids(AlbumSort.alphabeticalByName), ['b', 'a', 'c']);
+      // Same artist: oldest album first.
+      expect(ids(AlbumSort.alphabeticalByArtist), ['c', 'b', 'a']);
+    });
+
+    test('by year, newest first', () => expect(ids(AlbumSort.byYear), ['b', 'c', 'a']));
+
+    test('by date added and last played, missing dates last', () {
+      expect(ids(AlbumSort.newest), ['c', 'a', 'b']);
+      expect(ids(AlbumSort.recent), ['b', 'c', 'a']);
+    });
+
+    test('keeps the order for sorts with no local equivalent', () => expect(ids(AlbumSort.random), ['a', 'b', 'c']));
   });
 }

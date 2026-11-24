@@ -161,6 +161,24 @@ void main() {
       expect(seen.queryParameters.containsKey('musicFolderId'), isFalse);
     });
 
+    test('sorts by year newest first, with a year range only for that sort', () async {
+      late Uri seen;
+      final client = SubsonicClient(
+        creds,
+        httpClient: MockClient((req) async {
+          seen = req.url;
+          return _ok({'albumList2': {}});
+        }),
+      );
+      await client.getAlbumList(AlbumSort.byYear);
+      expect(seen.queryParameters, containsPair('type', 'byYear'));
+      expect(seen.queryParameters, containsPair('fromYear', '9999'));
+      expect(seen.queryParameters, containsPair('toYear', '0'));
+
+      await client.getAlbumList(AlbumSort.newest);
+      expect(seen.queryParameters.containsKey('fromYear'), isFalse);
+    });
+
     test('keeps the auth token out of connection error messages', () async {
       final client = SubsonicClient(
         creds,

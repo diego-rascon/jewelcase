@@ -12,6 +12,7 @@ List<Json> jsonList(Object? value) {
 int _int(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
 int? _intOrNull(Object? v) => v == null ? null : _int(v);
 String? _str(Object? v) => v?.toString();
+DateTime? _date(Object? v) => v == null ? null : DateTime.tryParse('$v');
 
 class MusicFolder {
   const MusicFolder({required this.id, required this.name});
@@ -85,6 +86,8 @@ class Album {
     this.year,
     this.genre,
     this.starred = false,
+    this.created,
+    this.played,
     this.songs = const [],
   });
 
@@ -98,6 +101,12 @@ class Album {
   final int? year;
   final String? genre;
   final bool starred;
+
+  /// When the album was added to the library.
+  final DateTime? created;
+
+  /// Last play (OpenSubsonic); null if never played or not reported.
+  final DateTime? played;
 
   /// Only populated by `getAlbum`.
   final List<Song> songs;
@@ -113,6 +122,8 @@ class Album {
     year: _intOrNull(j['year']),
     genre: _str(j['genre']),
     starred: j['starred'] != null,
+    created: _date(j['created']),
+    played: _date(j['played']),
     songs: jsonList(j['song']).map(Song.fromJson).toList(),
   );
 }
@@ -229,10 +240,48 @@ enum AlbumSort {
   alphabeticalByName('alphabeticalByName', 'Title'),
   alphabeticalByArtist('alphabeticalByArtist', 'Artist'),
   random('random', 'Random'),
-  starred('starred', 'Favorites');
+  starred('starred', 'Favorites'),
+
+  /// Newest year first (see `SubsonicClient.getAlbumList`).
+  byYear('byYear', 'Year');
 
   const AlbumSort(this.apiValue, this.label);
 
   final String apiValue;
   final String label;
+}
+
+/// Sorts [albums] the way the server would for [sort], for lists the server
+/// can't sort itself (such as starred albums). Orders without a client-side
+/// equivalent keep the given order.
+List<Album> sortAlbums(List<Album> albums, AlbumSort sort) {
+  String key(String? s) => (s ?? '').toLowerCase();
+  // Newest first; missing values last.
+  int byDateDesc(DateTime? a, DateTime? b) => a == null
+      ? (b == null ? 0 : 1)
+      : b == null
+      ? -1
+      : b.compareTo(a);
+  final Comparator<Album>? compare = switch (sort) {
+    AlbumSort.alphabeticalByName => (a, b) => key(a.name).compareTo(key(b.name)),
+    AlbumSort.alphabeticalByArtist => (a, b) {
+      final c = key(a.artist).compareTo(key(b.artist));
+      return c != 0 ? c : (a.year ?? 0).compareTo(b.year ?? 0);
+    },
+    AlbumSort.byYear => (a, b) {
+      final c = (b.year ?? 0).compareTo(a.year ?? 0);
+      return c != 0 ? c : key(a.name).compareTo(key(b.name));
+    },
+    AlbumSort.newest => (a, b) => byDateDesc(a.created, b.created),
+    AlbumSort.recent => (a, b) => byDateDesc(a.played, b.played),
+    _ => null,
+  };
+  if (compare == null) return albums;
+  // List.sort isn't stable, so break ties by original position.
+  final indexed = albums.indexed.toList()
+    ..sort((a, b) {
+      final c = compare(a.$2, b.$2);
+      return c != 0 ? c : a.$1.compareTo(b.$1);
+    });
+  return [for (final (_, album) in indexed) album];
 }
