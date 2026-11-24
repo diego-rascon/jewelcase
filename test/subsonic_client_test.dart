@@ -125,6 +125,29 @@ void main() {
       );
     });
 
+    test('pages through all songs with an empty search', () async {
+      late Uri seen;
+      final client = SubsonicClient(
+        creds,
+        httpClient: MockClient((req) async {
+          seen = req.url;
+          return _ok({
+            'searchResult3': {
+              'song': {'id': 's1', 'title': 'Only one'},
+            },
+          });
+        }),
+      );
+      final songs = await client.getSongs(size: 50, offset: 100, musicFolderId: '2');
+      expect(seen.path, '/rest/search3');
+      expect(seen.queryParameters, containsPair('query', ''));
+      expect(seen.queryParameters, containsPair('songCount', '50'));
+      expect(seen.queryParameters, containsPair('songOffset', '100'));
+      expect(seen.queryParameters, containsPair('albumCount', '0'));
+      expect(seen.queryParameters, containsPair('musicFolderId', '2'));
+      expect(songs.single.title, 'Only one');
+    });
+
     test('leaves out the library filter when none is selected', () async {
       late Uri seen;
       final client = SubsonicClient(

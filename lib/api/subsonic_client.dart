@@ -210,6 +210,20 @@ class SubsonicClient {
     return SearchResults.fromJson((r['searchResult3'] as Json?) ?? const {});
   }
 
+  /// One page of every song. Subsonic has no "list songs" call; Navidrome
+  /// answers an empty `search3` query with the whole library.
+  Future<List<Song>> getSongs({int size = 100, int offset = 0, String? musicFolderId}) async {
+    final r = await _get('search3', {
+      'query': '',
+      'artistCount': 0,
+      'albumCount': 0,
+      'songCount': size,
+      'songOffset': offset,
+      'musicFolderId': musicFolderId,
+    });
+    return SearchResults.fromJson((r['searchResult3'] as Json?) ?? const {}).songs;
+  }
+
   // ---- Favorites --------------------------------------------------------
 
   Future<SearchResults> getStarred({String? musicFolderId}) async {

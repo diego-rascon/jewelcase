@@ -6,8 +6,9 @@ import '../widgets/layout.dart';
 import 'albums_screen.dart';
 import 'artists_screen.dart';
 import 'playlists_screen.dart';
+import 'songs_screen.dart';
 
-/// Phone-only: albums, artists and playlists as tabs under one destination.
+/// Phone-only: albums, artists, songs and playlists as tabs under one destination.
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
 
@@ -16,7 +17,7 @@ class LibraryScreen extends StatelessWidget {
     final pad = pagePadding(context);
     final theme = Theme.of(context);
     return DefaultTabController(
-      length: 3,
+      length: 4,
       initialIndex: context.read<NavController>().libraryTab,
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -38,6 +39,7 @@ class LibraryScreen extends StatelessWidget {
                   tabs: [
                     Tab(text: 'Albums'),
                     Tab(text: 'Artists'),
+                    Tab(text: 'Songs'),
                     Tab(text: 'Playlists'),
                   ],
                 ),
@@ -47,6 +49,7 @@ class LibraryScreen extends StatelessWidget {
                   children: [
                     AlbumsScreen(showTitle: false),
                     ArtistsScreen(showTitle: false),
+                    SongsScreen(showTitle: false),
                     PlaylistsScreen(showTitle: false),
                   ],
                 ),

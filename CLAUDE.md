@@ -70,7 +70,8 @@ The app ID is `app.jewelcase.player` on every platform; the Dart package is `jew
 - `NavController` reads the window width itself, so it also works in event handlers.
 - Each `Destination` has its own nested `Navigator`, kept alive offstage once visited, so it keeps its history and scroll position.
 - Open detail pages with `NavController.push()`, usually through the helpers in `ui/actions.dart` (`openAlbum`, `openArtist`, `openPlaylist`). Don't call `Navigator.push`: `NavController.push()` first closes root-level overlays such as Now Playing, then pushes into the current section.
-- On phones, Albums/Artists/Playlists fold into one `library` tab. `NavController.current` maps between the two layouts.
+- On phones, Albums/Artists/Songs/Playlists (`Destination.libraryTabs`) fold into one `library` tab. `NavController.current` maps between the two layouts.
+- The wide sidebar has no Playlists item: it lists every playlist under a "Playlists" heading, and each opens with `NavController.openIn(Destination.playlists, …)`. Playlist pages are pushed with a route name (`playlistRouteName`); each section's navigator observer tracks its top route name (`topRouteName`) so the sidebar can highlight the open playlist.
 
 **UI conventions:**
 - Server-backed screens load data with `AsyncView` (`widgets/async_view.dart`). It handles loading and error states and reloads when `deps` change. Screens pass `deps: [session.libraryId]` so that switching library refetches.

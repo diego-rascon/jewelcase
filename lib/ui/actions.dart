@@ -27,8 +27,11 @@ void openAlbum(BuildContext context, String id) => context.read<NavController>()
 void openArtist(BuildContext context, String id) =>
     context.read<NavController>().push(ArtistDetailScreen(artistId: id));
 
+/// Route name for a playlist's page, so the sidebar can tell which one is open.
+String playlistRouteName(String id) => 'playlist/$id';
+
 void openPlaylist(BuildContext context, Playlist p) =>
-    context.read<NavController>().push(PlaylistDetailScreen(playlist: p));
+    context.read<NavController>().push(PlaylistDetailScreen(playlist: p), name: playlistRouteName(p.id));
 
 void toast(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)
@@ -182,6 +185,14 @@ Future<String?> promptText(BuildContext context, {required String title, String 
       ],
     ),
   );
+}
+
+/// Asks for a name and creates an empty playlist.
+Future<void> createPlaylist(BuildContext context) async {
+  final playlists = context.read<PlaylistsController>();
+  final name = await promptText(context, title: 'New playlist', hint: 'Playlist name', action: 'Create');
+  if (name == null || name.isEmpty || !context.mounted) return;
+  await guarded(context, () => playlists.create(name));
 }
 
 Future<void> showAddToPlaylist(BuildContext context, List<String> songIds) async {

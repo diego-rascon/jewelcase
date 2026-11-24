@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import 'theme.dart';
@@ -7,10 +9,11 @@ enum Destination {
   search('Search', Icons.search_rounded, Icons.search_rounded),
   albums('Albums', Icons.album_outlined, Icons.album_rounded),
   artists('Artists', Icons.person_outline_rounded, Icons.person_rounded),
+  songs('Songs', Icons.music_note_outlined, Icons.music_note_rounded),
   playlists('Playlists', Icons.queue_music_outlined, Icons.queue_music_rounded),
   favorites('Favorites', Icons.favorite_border_rounded, Icons.favorite_rounded),
 
-  /// Phone-only tab combining albums, artists and playlists.
+  /// Phone-only tab combining albums, artists, songs and playlists.
   library('Library', Icons.library_music_outlined, Icons.library_music_rounded);
 
   const Destination(this.label, this.icon, this.selectedIcon);
@@ -19,8 +22,10 @@ enum Destination {
   final IconData icon;
   final IconData selectedIcon;
 
-  static const sidebar = [home, search, albums, artists, playlists, favorites];
   static const tabs = [home, search, library, favorites];
+
+  /// The phone library view's tabs, in order.
+  static const libraryTabs = [albums, artists, songs, playlists];
 }
 
 /// Each destination keeps its own navigation stack so detail pages open
@@ -28,6 +33,7 @@ enum Destination {
 class NavController extends ChangeNotifier {
   final rootKey = GlobalKey<NavigatorState>();
   final _keys = {for (final d in Destination.values) d: GlobalKey<NavigatorState>()};
+  late final _observers = {for (final d in Destination.values) d: _TopRouteObserver(_topChanged)};
 
   Destination _selected = Destination.home;
 
@@ -41,21 +47,33 @@ class NavController extends ChangeNotifier {
 
   Destination get current {
     final wide = _wide;
-    if (!wide && const [Destination.albums, Destination.artists, Destination.playlists].contains(_selected)) {
-      return Destination.library;
-    }
+    if (!wide && Destination.libraryTabs.contains(_selected)) return Destination.library;
     if (wide && _selected == Destination.library) return Destination.albums;
     return _selected;
   }
 
   /// Which tab the phone library view should open on.
-  int get libraryTab => switch (_selected) {
-    Destination.artists => 1,
-    Destination.playlists => 2,
-    _ => 0,
-  };
+  int get libraryTab => Destination.libraryTabs.indexOf(_selected).clamp(0, Destination.libraryTabs.length - 1);
 
   GlobalKey<NavigatorState> keyFor(Destination d) => _keys[d]!;
+
+  NavigatorObserver observerFor(Destination d) => _observers[d]!;
+
+  /// Route name of the page on top of the visible section, if it was pushed
+  /// with one (see [push]).
+  String? get topRouteName => _observers[current]!.name;
+
+  bool _notifyScheduled = false;
+
+  // Observers fire in the middle of a navigator update, so notify afterwards.
+  void _topChanged() {
+    if (_notifyScheduled) return;
+    _notifyScheduled = true;
+    scheduleMicrotask(() {
+      _notifyScheduled = false;
+      notifyListeners();
+    });
+  }
 
   void select(Destination d) {
     if (d == current) {
@@ -66,11 +84,39 @@ class NavController extends ChangeNotifier {
   }
 
   /// Opens a page in the current section, closing full-screen overlays such as
-  /// Now Playing first.
-  void push(Widget page) {
+  /// Now Playing first. [name] identifies the page for [topRouteName].
+  void push(Widget page, {String? name}) {
     rootKey.currentState?.popUntil((r) => r.isFirst);
-    keyFor(current).currentState?.push(MaterialPageRoute<void>(builder: (_) => page));
+    keyFor(current).currentState?.push(_route(page, name));
   }
+
+  /// Switches to section [d] and shows [page] directly on top of its root
+  /// screen, unless [name] is already on top there.
+  void openIn(Destination d, Widget page, {required String name}) {
+    rootKey.currentState?.popUntil((r) => r.isFirst);
+    final alreadyOpen = d == current && topRouteName == name;
+    _selected = d;
+    notifyListeners();
+    if (alreadyOpen) return;
+    void show() {
+      final nav = keyFor(d).currentState;
+      if (nav == null) return;
+      nav.popUntil((r) => r.isFirst);
+      unawaited(nav.push(_route(page, name)));
+    }
+
+    // A section's navigator is only built on its first visit.
+    if (keyFor(d).currentState != null) {
+      show();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => show());
+    }
+  }
+
+  static Route<void> _route(Widget page, String? name) => MaterialPageRoute<void>(
+    settings: RouteSettings(name: name),
+    builder: (_) => page,
+  );
 
   /// Handles the system back gesture for the visible section.
   bool pop() {
@@ -78,5 +124,30 @@ class NavController extends ChangeNotifier {
     if (nav == null || !nav.canPop()) return false;
     nav.pop();
     return true;
+  }
+}
+
+/// Remembers the name of a navigator's top route.
+class _TopRouteObserver extends NavigatorObserver {
+  _TopRouteObserver(this._onChange);
+
+  final VoidCallback _onChange;
+  String? name;
+
+  void _set(Route<dynamic>? top) {
+    if (top?.settings.name == name) return;
+    name = top?.settings.name;
+    _onChange();
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => _set(route);
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _set(previousRoute);
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (newRoute?.isCurrent ?? false) _set(newRoute);
   }
 }

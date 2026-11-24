@@ -19,12 +19,7 @@ class PlaylistsScreen extends StatefulWidget {
 }
 
 class _PlaylistsScreenState extends State<PlaylistsScreen> {
-  Future<void> _create() async {
-    final playlists = context.read<PlaylistsController>();
-    final name = await promptText(context, title: 'New playlist', hint: 'Playlist name', action: 'Create');
-    if (name == null || name.isEmpty || !mounted) return;
-    await guarded(context, () => playlists.create(name));
-  }
+  Future<void> _create() => createPlaylist(context);
 
   @override
   Widget build(BuildContext context) {
