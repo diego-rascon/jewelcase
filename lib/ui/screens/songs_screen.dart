@@ -189,6 +189,7 @@ class _SongsScreenState extends State<SongsScreen> {
                   ),
                 ),
               ),
+              const BottomInset(),
             ],
           ),
         ),

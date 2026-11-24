@@ -58,7 +58,6 @@ class _FavoriteSongsScreenState extends State<FavoriteSongsScreen> {
         final total = visible.fold(Duration.zero, (sum, s) => sum + s.duration);
 
         return DetailPage(
-          coverId: null,
           cover: FavoriteSongsScreen.cover(),
           title: FavoriteSongsScreen.title,
           meta: joinDot([plural(visible.length, 'song'), formatLongDuration(total)]),

@@ -59,7 +59,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     return ArtTinted(
       coverId: song.coverArt,
       builder: (context, art) {
-        final base = art?.primaryContainer ?? const Color(0xFF2A2A32);
+        final base = art?.primaryContainer ?? const Color(0xFF2C2C2E);
         final deep = Color.lerp(base, Colors.black, 0.72)!;
         const fg = Colors.white;
         final wide = MediaQuery.sizeOf(context).width >= 900;

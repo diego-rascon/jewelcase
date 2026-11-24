@@ -66,7 +66,7 @@ The app ID is `app.jewelcase.player` on every platform; the Dart package is `jew
 - The server removes playlist songs by position. `PlaylistDetailScreen` therefore blocks further removals until the list has reloaded.
 
 **Navigation (`lib/ui/navigation.dart`, `lib/ui/shell.dart`):**
-- Layout is adaptive. At width ≥ `wideLayoutWidth` (840, `isWide()` in `theme.dart`), the app shows a sidebar plus `PlayerBar`; below that, bottom `NavigationBar` tabs plus `MiniPlayer`.
+- Layout is adaptive. At width ≥ `wideLayoutWidth` (840, `isWide()` in `theme.dart`), the app shows a sidebar, with `PlayerBar` floating over the bottom of the content area (`PlayerBarHost`); below that, bottom `NavigationBar` tabs plus `MiniPlayer`.
 - `NavController` reads the window width itself, so it also works in event handlers.
 - Each `Destination` has its own nested `Navigator`, kept alive offstage once visited, so it keeps its history and scroll position.
 - Open detail pages with `NavController.push()`, usually through the helpers in `ui/actions.dart` (`openAlbum`, `openArtist`, `openPlaylist`). Don't call `Navigator.push`: `NavController.push()` first closes root-level overlays such as Now Playing, then pushes into the current section.
@@ -77,13 +77,14 @@ The app ID is `app.jewelcase.player` on every platform; the Dart package is `jew
 **UI conventions:**
 - Server-backed screens load data with `AsyncView` (`widgets/async_view.dart`). It handles loading and error states and reloads when `deps` change. Screens pass `deps: [session.libraryId]` so that switching library refetches.
 - Paged or incremental loads, such as `AlbumsScreen`, use a generation counter so responses for an outdated sort or library are dropped.
-- Wrap user-triggered API and player calls in `guarded()` from `ui/actions.dart`, which shows errors as a snackbar. Context menus use `MenuAction` with `showActionMenu` or `MoreButton`.
+- Wrap user-triggered API and player calls in `guarded()` from `ui/actions.dart`, which shows errors as a snackbar. Context menus use `MenuAction` with `showActionMenu` or `MoreButton`; they open as a popup in the wide layout and as a bottom sheet on phones.
 - Song lists outside albums (playlists, Favorite songs, Songs) put a `SongListHeader` above their `SongTile`s. It shares the tiles' column layout (`_SongRow`), and its column sorts go through `sortSongs()`, which keeps each song's original position for removal by position. The server can't sort songs, so a sorted Songs screen loads the whole library first.
+- On desktop, content scrolls under the floating `PlayerBar`. `PlayerBarHost` adds the bar's footprint to the content's `MediaQuery` bottom padding. So a screen's `SafeArea` must pass `bottom: false`, and every scroll view must end with `BottomInset()` (slivers) or add `bottomInset(context)` to its padding (box lists). Otherwise its last items stay hidden behind the bar.
 - Build long lists lazily (`ListView.builder`, `SliverList.builder`, `SliverGrid.builder`). Card grids use `cardGrid()`, which already handles narrow widths.
 - Anything driven by the position stream sits behind a `RepaintBoundary`, as the seek bar and progress bar do, so it doesn't repaint the blurred Now Playing backdrop.
 - Keyboard shortcuts (`PlaybackShortcuts` in `shell.dart`) sit above the root navigator: Space for play/pause, Ctrl/⌘+←/→ for previous/next. They're ignored while a text field has focus.
 - Artwork goes through `CoverArt`, which handles caching and a generated placeholder. It requests its laid-out size × device pixel ratio unless `size` is given.
-- The theme is dark-only (`buildTheme()`).
+- The theme is dark-only and neutral (`buildTheme()`): white and untinted grays in the spirit of Apple's dark mode, with white as the accent. Content sits on `surface`; chrome (the sidebar, the phone tab bar) uses the one-step-lighter `surfaceContainerLow`. Don't add hues; red is reserved for errors. Only Now Playing takes colors from the art (`ArtTinted`).
 
 ## Tests
 

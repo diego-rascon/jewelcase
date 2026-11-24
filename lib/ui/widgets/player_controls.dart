@@ -240,7 +240,8 @@ class _PlayButton extends StatelessWidget {
 class VolumeControl extends StatelessWidget {
   const VolumeControl({super.key, this.width = 110});
 
-  final double width;
+  /// The slider's width; `null` shows only the mute button.
+  final double? width;
 
   @override
   Widget build(BuildContext context) {
@@ -261,10 +262,11 @@ class VolumeControl extends StatelessWidget {
                 : Icons.volume_up_rounded,
           ),
         ),
-        SizedBox(
-          width: width,
-          child: Slider(value: v, onChanged: p.setVolume),
-        ),
+        if (width != null)
+          SizedBox(
+            width: width,
+            child: Slider(value: v, onChanged: p.setVolume),
+          ),
       ],
     );
   }

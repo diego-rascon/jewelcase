@@ -72,6 +72,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
                     ),
                   ),
                 ),
+                const BottomInset(),
               ],
             ),
           ),

@@ -4,6 +4,19 @@ import '../theme.dart';
 
 double pagePadding(BuildContext context) => isWide(context) ? 32 : 16;
 
+/// Ends a scroll view with room for what floats over the bottom of the
+/// content (the desktop player bar, passed down as `MediaQuery` padding), so
+/// the last items can scroll clear of it. Use [bottomInset] for a box list's
+/// own padding.
+class BottomInset extends StatelessWidget {
+  const BottomInset({super.key});
+
+  @override
+  Widget build(BuildContext context) => SliverToBoxAdapter(child: SizedBox(height: bottomInset(context)));
+}
+
+double bottomInset(BuildContext context) => MediaQuery.paddingOf(context).bottom;
+
 /// Grid that fits cards of roughly [targetWidth] (smaller on narrow screens)
 /// and leaves room for two lines of text under the square artwork.
 SliverGridDelegate cardGrid(double crossAxisExtent, {double? targetWidth, double textHeight = 52}) {

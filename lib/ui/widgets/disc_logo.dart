@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-/// The Jewelcase mark: a compact disc in the theme's warm coral, with a
+/// The Jewelcase mark: a compact disc in warm coral, with a
 /// single soft sheen and a couple of grooves.
 class DiscLogo extends StatelessWidget {
   const DiscLogo({super.key, this.size = 32});
@@ -22,8 +22,7 @@ class DiscPainter extends CustomPainter {
   /// Paints only the disc's shape in white, for Android's themed icons.
   final bool silhouette;
 
-  // From the theme's palette: its primary (soft salmon) down to the coral
-  // seed color, lit from the top left.
+  // Soft salmon down to coral, lit from the top left.
   static const _body = [Color(0xFFFFC1A8), Color(0xFFFF8A78), Color(0xFFF2584F)];
 
   @override

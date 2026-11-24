@@ -43,17 +43,12 @@ class AppShell extends StatelessWidget {
 
     return wide
         ? Scaffold(
-            body: Column(
+            body: Row(
               children: [
+                const _Sidebar(),
                 Expanded(
-                  child: Row(
-                    children: [
-                      const _Sidebar(),
-                      Expanded(child: ClipRect(child: content)),
-                    ],
-                  ),
+                  child: ClipRect(child: PlayerBarHost(child: content)),
                 ),
-                const PlayerBar(),
               ],
             ),
           )
@@ -142,18 +137,16 @@ class _Sidebar extends StatelessWidget {
       return _SidebarItem(
         selected: selected,
         onTap: () => nav.select(d),
-        leading: Icon(
-          selected ? d.selectedIcon : d.icon,
-          size: 22,
-          color: selected ? scheme.primary : scheme.onSurfaceVariant,
-        ),
+        leading: Icon(selected ? d.selectedIcon : d.icon),
         label: d.label,
       );
     }
 
-    // A Material (not a plain colored box) so list tiles can paint their ink.
+    // A Material (not a plain colored box) so the items can paint their ink.
+    // One step lighter than the content, with a hairline edge between them.
     return Material(
-      color: scheme.surfaceContainerLowest,
+      color: scheme.surfaceContainerLow,
+      shape: Border(right: BorderSide(color: scheme.outlineVariant)),
       child: SizedBox(
         width: 232,
         child: SafeArea(
@@ -162,12 +155,12 @@ class _Sidebar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                padding: const EdgeInsets.fromLTRB(22, 22, 22, 14),
                 child: Row(
                   children: [
-                    const DiscLogo(size: 32),
-                    const SizedBox(width: 12),
-                    Text('Jewelcase', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+                    const DiscLogo(size: 26),
+                    const SizedBox(width: 10),
+                    Text('Jewelcase', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
                   ],
                 ),
               ),
@@ -182,7 +175,7 @@ class _Sidebar extends StatelessWidget {
                 trailing: IconButton(
                   tooltip: 'New playlist',
                   visualDensity: VisualDensity.compact,
-                  iconSize: 20,
+                  iconSize: 18,
                   color: scheme.onSurfaceVariant,
                   onPressed: () => createPlaylist(context),
                   icon: const Icon(Icons.add_rounded),
@@ -192,12 +185,12 @@ class _Sidebar extends StatelessWidget {
               if (session.libraries.length > 1)
                 const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: LibraryPicker(dense: true)),
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-                child: ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.settings_outlined),
-                  title: const Text('Settings'),
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _SidebarItem(
+                  selected: false,
                   onTap: () => nav.push(const SettingsScreen()),
+                  leading: const Icon(Icons.settings_outlined),
+                  label: 'Settings',
                 ),
               ),
             ],
@@ -218,7 +211,7 @@ class _SidebarHeading extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: EdgeInsets.fromLTRB(26, 20, trailing == null ? 26 : 14, 6),
+      padding: EdgeInsets.fromLTRB(22, 16, trailing == null ? 22 : 12, 4),
       child: SizedBox(
         height: 28,
         child: Row(
@@ -226,7 +219,7 @@ class _SidebarHeading extends StatelessWidget {
             Expanded(
               child: Text(
                 text,
-                style: theme.textTheme.labelLarge?.copyWith(
+                style: theme.textTheme.labelMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                 ),
@@ -248,32 +241,38 @@ class _SidebarItem extends StatelessWidget {
   final Widget leading;
   final String label;
 
+  static const _radius = BorderRadius.all(Radius.circular(8));
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 1),
       child: Material(
-        color: selected ? scheme.primary.withValues(alpha: 0.14) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        color: selected ? scheme.onSurface.withValues(alpha: 0.08) : Colors.transparent,
+        borderRadius: _radius,
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: _radius,
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             child: Row(
               children: [
-                SizedBox.square(dimension: 22, child: Center(child: leading)),
-                const SizedBox(width: 14),
+                // Icons pick up the item's color and size; covers fill the box.
+                IconTheme.merge(
+                  data: IconThemeData(size: 18, color: selected ? scheme.onSurface : scheme.onSurfaceVariant),
+                  child: SizedBox.square(dimension: 20, child: Center(child: leading)),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: selected ? scheme.onSurface : scheme.onSurface.withValues(alpha: 0.82),
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
                 ),
@@ -319,7 +318,7 @@ class _SidebarPlaylists extends StatelessWidget {
           if (i == 0) return favorites;
           if (lists.isEmpty) {
             return Padding(
-              padding: const EdgeInsets.fromLTRB(26, 8, 26, 0),
+              padding: const EdgeInsets.fromLTRB(22, 8, 22, 0),
               child: Text('No playlists yet', style: muted),
             );
           }

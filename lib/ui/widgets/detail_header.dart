@@ -1,15 +1,13 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../theme.dart';
-import 'art_colors.dart';
 import 'layout.dart';
 
-/// Scaffold for album / artist / playlist pages: art-tinted header with a big
-/// cover and primary actions, followed by [slivers].
+/// Scaffold for album / artist / playlist pages: a header with a big cover
+/// and primary actions, followed by [slivers].
 class DetailPage extends StatelessWidget {
   const DetailPage({
     super.key,
-    required this.coverId,
     required this.cover,
     this.kicker,
     required this.title,
@@ -21,7 +19,6 @@ class DetailPage extends StatelessWidget {
     required this.slivers,
   });
 
-  final String? coverId;
   final Widget cover;
 
   /// Small all-caps label above the title (the artist page's "ARTIST").
@@ -110,38 +107,17 @@ class DetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: ArtTinted(
-        coverId: coverId,
-        builder: (context, art) => CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              backgroundColor: Color.alphaBlend(
-                (art?.primaryContainer ?? theme.colorScheme.surface).withValues(alpha: 0.35),
-                theme.colorScheme.surface,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 500),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      (art?.primaryContainer ?? theme.colorScheme.surface).withValues(alpha: 0.35),
-                      theme.colorScheme.surface.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-                padding: EdgeInsets.fromLTRB(pad, 8, pad, 28),
-                child: header,
-              ),
-            ),
-            ...slivers,
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
-          ],
-        ),
+      body: CustomScrollView(
+        slivers: [
+          const SliverAppBar(pinned: true),
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(pad, 8, pad, 28),
+            sliver: SliverToBoxAdapter(child: header),
+          ),
+          ...slivers,
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+          const BottomInset(),
+        ],
       ),
     );
   }

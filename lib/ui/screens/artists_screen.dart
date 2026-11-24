@@ -122,6 +122,7 @@ class _ArtistListState extends State<_ArtistList> {
               itemBuilder: (context, i) => _ArtistRow(artist: visible[i]),
             ),
           ),
+        const BottomInset(),
       ],
     );
   }

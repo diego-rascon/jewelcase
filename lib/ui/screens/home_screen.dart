@@ -59,7 +59,7 @@ class HomeScreen extends StatelessWidget {
           builder: (context, data, reload) => RefreshIndicator(
             onRefresh: reload,
             child: ListView(
-              padding: const EdgeInsets.only(bottom: 32),
+              padding: EdgeInsets.only(bottom: 32 + bottomInset(context)),
               children: [
                 Padding(
                   padding: EdgeInsets.fromLTRB(pad, 24, pad, 8),

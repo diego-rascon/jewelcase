@@ -75,7 +75,6 @@ class _AlbumView extends StatelessWidget {
     }
 
     return DetailPage(
-      coverId: album.coverArt,
       cover: CoverArt(id: album.coverArt, seed: album.id, radius: 12),
       title: album.name,
       subtitle: album.artist == null

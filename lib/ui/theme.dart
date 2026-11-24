@@ -1,17 +1,45 @@
 import 'package:material_ui/material_ui.dart';
 
-const _seed = Color(0xFFFF6B5E);
-
-/// The app is dark-only: the art-tinted surfaces are designed for it.
+/// The app is dark-only and neutral: white and soft, untinted grays in the
+/// spirit of Apple's dark mode. Content sits on a mid-dark gray; chrome (the
+/// sidebar, the phone tab bar) is one step lighter. White is the accent
+/// (selection, active controls, filled buttons). Only Now Playing takes
+/// colors from the art.
 ThemeData buildTheme() {
-  final scheme = ColorScheme.fromSeed(seedColor: _seed, brightness: Brightness.dark, dynamicSchemeVariant: .vibrant)
-      .copyWith(
-        surface: const Color(0xFF0E0E11),
-        surfaceContainerLowest: const Color(0xFF09090B),
-        surfaceContainerLow: const Color(0xFF141418),
-        surfaceContainer: const Color(0xFF18181D),
-        surfaceContainerHigh: const Color(0xFF202027),
-        surfaceContainerHighest: const Color(0xFF2A2A32),
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: Colors.grey,
+        brightness: Brightness.dark,
+        dynamicSchemeVariant: DynamicSchemeVariant.monochrome,
+      ).copyWith(
+        primary: Colors.white,
+        onPrimary: Colors.black,
+        primaryContainer: const Color(0xFF363636),
+        onPrimaryContainer: Colors.white,
+        inversePrimary: Colors.black,
+        secondary: const Color(0xFFAEAEAE),
+        onSecondary: Colors.black,
+        secondaryContainer: const Color(0xFF2B2B2B),
+        onSecondaryContainer: Colors.white,
+        error: const Color(0xFFFF453A), // systemRed
+        onError: Colors.white,
+        errorContainer: const Color(0xFF5E1F1B),
+        onErrorContainer: const Color(0xFFFFD9D5),
+        surfaceTint: Colors.transparent,
+        // Darkest to lightest. `surface` is the content background;
+        // `surfaceContainerLow` is the chrome around it.
+        surfaceContainerLowest: const Color(0xFF0D0D0D),
+        surface: const Color(0xFF161616),
+        surfaceContainerLow: const Color(0xFF1D1D1D),
+        surfaceContainer: const Color(0xFF222222),
+        surfaceContainerHigh: const Color(0xFF2A2A2A),
+        surfaceContainerHighest: const Color(0xFF343434),
+        onSurface: Colors.white,
+        onSurfaceVariant: const Color(0xFF9B9B9B),
+        outline: const Color(0xFF666666),
+        outlineVariant: const Color(0xFF2C2C2C), // hairline borders and separators
+        inverseSurface: const Color(0xFFE6E6E6),
+        onInverseSurface: const Color(0xFF161616),
       );
 
   final base = ThemeData(colorScheme: scheme, brightness: Brightness.dark, useMaterial3: true);

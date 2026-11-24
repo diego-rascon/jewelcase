@@ -20,7 +20,7 @@ class SettingsScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
-        padding: EdgeInsets.symmetric(horizontal: pad - 8, vertical: 8),
+        padding: EdgeInsets.fromLTRB(pad - 8, 8, pad - 8, 8 + bottomInset(context)),
         children: [
           _Group(
             title: 'Server',

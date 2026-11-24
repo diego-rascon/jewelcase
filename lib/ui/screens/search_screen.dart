@@ -146,7 +146,7 @@ class _Results extends StatelessWidget {
     final pad = pagePadding(context);
     final songs = results.songs;
     return ListView(
-      padding: const EdgeInsets.only(bottom: 32),
+      padding: EdgeInsets.only(bottom: 32 + bottomInset(context)),
       children: [
         if (songs.isNotEmpty) ...[
           Padding(

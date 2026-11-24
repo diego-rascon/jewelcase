@@ -80,7 +80,6 @@ class _ArtistViewState extends State<_ArtistView> {
     final visibleTop = _showAllTop ? topSongs : topSongs.take(5).toList();
 
     return DetailPage(
-      coverId: artist.coverArt,
       cover: CoverArt(id: artist.coverArt, seed: artist.id, circle: true, icon: Icons.person_rounded),
       kicker: 'Artist',
       title: artist.name,

@@ -243,6 +243,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                   ),
                 ),
               ),
+              const BottomInset(),
             ],
           ),
         ),

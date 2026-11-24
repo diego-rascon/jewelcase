@@ -14,6 +14,7 @@ import 'screens/album_detail_screen.dart';
 import 'screens/artist_detail_screen.dart';
 import 'screens/favorite_songs_screen.dart';
 import 'screens/playlist_detail_screen.dart';
+import 'theme.dart';
 
 class MenuAction {
   const MenuAction(this.label, this.icon, this.onSelected);
@@ -57,13 +58,22 @@ Future<void> guarded(BuildContext context, Future<void> Function() action, {Stri
   }
 }
 
+/// Shows [actions] as a popup menu at [globalPosition] in the wide layout, or
+/// as a sheet sliding up from the bottom on phones, and runs the one picked.
 Future<void> showActionMenu(BuildContext context, Offset globalPosition, List<MenuAction> actions) async {
+  final selected = isWide(context)
+      ? await _showPopupMenu(context, globalPosition, actions)
+      : await _showActionSheet(context, actions);
+  selected?.onSelected();
+}
+
+Future<MenuAction?> _showPopupMenu(BuildContext context, Offset globalPosition, List<MenuAction> actions) {
   // The menu is laid out in its navigator's overlay. Inside a section's nested
   // navigator that overlay doesn't start at the window origin (the sidebar sits
   // to its left), so the global position has to be made local to it.
   final overlay = Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
   final local = overlay.globalToLocal(globalPosition);
-  final selected = await showMenu<MenuAction>(
+  return showMenu<MenuAction>(
     context: context,
     position: RelativeRect.fromRect(local & const Size(1, 1), Offset.zero & overlay.size),
     items: [
@@ -75,8 +85,28 @@ Future<void> showActionMenu(BuildContext context, Offset globalPosition, List<Me
         ),
     ],
   );
-  selected?.onSelected();
 }
+
+/// On the root navigator, so the sheet covers the tab bar and mini player
+/// rather than sliding up inside the current section.
+Future<MenuAction?> _showActionSheet(BuildContext context, List<MenuAction> actions) =>
+    showModalBottomSheet<MenuAction>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
+        child: ListView(
+          shrinkWrap: true,
+          padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + MediaQuery.paddingOf(context).bottom),
+          children: [
+            for (final a in actions)
+              ListTile(leading: Icon(a.icon), title: Text(a.label), onTap: () => Navigator.pop(context, a)),
+          ],
+        ),
+      ),
+    );
 
 /// "⋯" button that opens [actions] next to itself.
 class MoreButton extends StatelessWidget {
@@ -212,6 +242,7 @@ Future<void> showAddToPlaylist(BuildContext context, List<String> songIds) async
   final messenger = ScaffoldMessenger.maybeOf(context);
   final choice = await showModalBottomSheet<Object>(
     context: context,
+    useRootNavigator: true,
     showDragHandle: true,
     isScrollControlled: true,
     constraints: const BoxConstraints(maxWidth: 520),

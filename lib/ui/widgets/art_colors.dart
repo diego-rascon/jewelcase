@@ -4,8 +4,8 @@ import 'package:material_ui/material_ui.dart';
 
 import 'cover_art.dart';
 
-/// Extracts a color scheme from album art (cached), for tinted headers and
-/// the Now Playing backdrop.
+/// Extracts a color scheme from album art (cached), for the Now Playing
+/// backdrop. The rest of the app stays neutral.
 class ArtColors {
   static final _cache = <String, ColorScheme>{}; // insertion-ordered: oldest first
 
