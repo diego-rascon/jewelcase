@@ -169,18 +169,23 @@ class _ModeIcon extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Column(
-    mainAxisSize: MainAxisSize.min,
+  // The dot hangs below the icon without taking layout space, so the icon
+  // stays centered in the button's hover circle.
+  Widget build(BuildContext context) => Stack(
+    alignment: Alignment.center,
+    clipBehavior: Clip.none,
     children: [
       Icon(icon),
-      const SizedBox(height: 2),
-      AnimatedOpacity(
-        opacity: on ? 1 : 0,
-        duration: const Duration(milliseconds: 150),
-        child: Container(
-          width: 4,
-          height: 4,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      Positioned(
+        bottom: -6,
+        child: AnimatedOpacity(
+          opacity: on ? 1 : 0,
+          duration: const Duration(milliseconds: 150),
+          child: Container(
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
         ),
       ),
     ],
