@@ -41,20 +41,23 @@ const favoriteSongsRouteName = 'playlist:favorites';
 void openFavoriteSongs(BuildContext context) =>
     context.read<NavController>().push(const FavoriteSongsScreen(), name: favoriteSongsRouteName);
 
-void toast(BuildContext context, String message) {
-  ScaffoldMessenger.maybeOf(context)
-    ?..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(message), duration: const Duration(seconds: 2)));
-}
+/// Shows [message] in a snackbar, replacing the one on screen.
+void toast(BuildContext context, String message) => _toast(ScaffoldMessenger.maybeOf(context), message);
+
+// Takes the messenger rather than a context, so callers can look it up
+// before an await.
+void _toast(ScaffoldMessengerState? messenger, String message) => messenger
+  ?..hideCurrentSnackBar()
+  ..showSnackBar(SnackBar(content: Text(message)));
 
 /// Runs [action], reporting failures as a snackbar instead of crashing.
 Future<void> guarded(BuildContext context, Future<void> Function() action, {String? success}) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   try {
     await action();
-    if (success != null) messenger?.showSnackBar(SnackBar(content: Text(success)));
+    if (success != null) _toast(messenger, success);
   } catch (e) {
-    messenger?.showSnackBar(SnackBar(content: Text('$e')));
+    _toast(messenger, '$e');
   }
 }
 
@@ -295,14 +298,14 @@ Future<void> showAddToPlaylist(BuildContext context, List<String> songIds) async
   try {
     if (choice is Playlist) {
       await playlists.addSongs(choice.id, songIds);
-      messenger?.showSnackBar(SnackBar(content: Text('Added to ${choice.name}')));
+      _toast(messenger, 'Added to ${choice.name}');
     } else {
       final name = await promptText(context, title: 'New playlist', hint: 'Playlist name', action: 'Create');
       if (name == null || name.isEmpty) return;
       await playlists.create(name, songIds: songIds);
-      messenger?.showSnackBar(SnackBar(content: Text('Created $name')));
+      _toast(messenger, 'Created $name');
     }
   } catch (e) {
-    messenger?.showSnackBar(SnackBar(content: Text('$e')));
+    _toast(messenger, '$e');
   }
 }

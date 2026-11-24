@@ -86,9 +86,7 @@ class _Gate extends StatelessWidget {
     final session = context.watch<SessionController>();
     final Widget child;
     if (session.isRestoring) {
-      child = const Scaffold(
-        body: Center(child: CircularProgressIndicator(strokeCap: StrokeCap.round)),
-      );
+      child = const Scaffold(body: Center(child: CircularProgressIndicator()));
     } else if (!session.isSignedIn) {
       child = const LoginScreen();
     } else {

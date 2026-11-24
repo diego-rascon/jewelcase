@@ -236,7 +236,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                   padding: const EdgeInsets.all(32),
                   child: Center(
                     child: _loading
-                        ? const CircularProgressIndicator(strokeCap: StrokeCap.round)
+                        ? const CircularProgressIndicator()
                         : _error != null && _albums.isNotEmpty
                         ? FilledButton.tonal(onPressed: _retry, child: const Text('Couldn’t load more · Retry'))
                         : null,

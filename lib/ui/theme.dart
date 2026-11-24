@@ -115,6 +115,7 @@ ThemeData buildTheme() {
       ),
     ),
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(strokeCap: StrokeCap.round),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
         TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),

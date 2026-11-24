@@ -173,7 +173,7 @@ class _SongsScreenState extends State<SongsScreen> {
                         ? Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const CircularProgressIndicator(strokeCap: StrokeCap.round),
+                              const CircularProgressIndicator(),
                               const SizedBox(height: 16),
                               Text(
                                 'Loading all songs to sort… ${_songs.length}',
@@ -182,7 +182,7 @@ class _SongsScreenState extends State<SongsScreen> {
                             ],
                           )
                         : _loading
-                        ? const CircularProgressIndicator(strokeCap: StrokeCap.round)
+                        ? const CircularProgressIndicator()
                         : _error != null && _songs.isNotEmpty
                         ? FilledButton.tonal(onPressed: _retry, child: const Text('Couldn’t load more · Retry'))
                         : null,

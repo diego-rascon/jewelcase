@@ -46,7 +46,7 @@ class _AsyncViewState<T> extends State<AsyncView<T>> {
       // Keep showing stale data during a reload (pull-to-refresh).
       final waiting = snap.connectionState != ConnectionState.done;
       if (waiting && !snap.hasData) {
-        return frame(const Center(child: CircularProgressIndicator(strokeCap: StrokeCap.round)));
+        return frame(const Center(child: CircularProgressIndicator()));
       }
       if (snap.hasError) return frame(ErrorState(message: '${snap.error}', onRetry: _reload));
       return widget.builder(context, snap.data as T, _reload);

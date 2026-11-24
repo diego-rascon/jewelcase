@@ -118,7 +118,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       builder: (context, snap) {
                         if (snap.hasError) return ErrorState(message: '${snap.error}');
                         if (!snap.hasData) {
-                          return const Center(child: CircularProgressIndicator(strokeCap: StrokeCap.round));
+                          return const Center(child: CircularProgressIndicator());
                         }
                         final r = snap.data!;
                         if (r.isEmpty) {
