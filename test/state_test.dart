@@ -99,6 +99,23 @@ void main() {
     expect(scrobbleThreshold(const Duration(minutes: 20)), const Duration(minutes: 4));
   });
 
+  group('unshuffledOrder', () {
+    double id(double x) => x;
+
+    test('carries on after the current song, then the unplayed ones before it', () {
+      // Album tracks 0–9 played shuffled: 4 is on, 7 and 2 already played.
+      expect(unshuffledOrder(<double>[9, 0, 5, 3, 8, 1, 6], id, 4), <double>[5, 6, 8, 9, 0, 1, 3]);
+    });
+
+    test('keeps songs queued with Play next right after the current one', () {
+      expect(unshuffledOrder(<double>[7, 3.5, 5, 3.25], id, 3), <double>[3.25, 3.5, 5, 7]);
+    });
+
+    test('is empty for an empty queue', () {
+      expect(unshuffledOrder(<double>[], id, 0), isEmpty);
+    });
+  });
+
   group('sortAlbums', () {
     final albums = [
       Album(id: 'a', name: 'beta', artist: 'Zed', year: 1999, created: DateTime(2024, 1, 1)),

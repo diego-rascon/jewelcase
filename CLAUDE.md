@@ -53,7 +53,9 @@ The app ID is `app.jewelcase.player` on every platform; the Dart package is `jew
 - `coverUrl`/`coverCacheKey` snap sizes to `SubsonicClient.coverSizes` (150/400/800). This keeps the number of resized copies per cover small. It depends on the salt being fixed per session, so URLs stay stable.
 
 **Playback (`lib/audio/`):**
-- `PlayerController` wraps a just_audio `AudioPlayer`. Each `AudioSource` is tagged with its `Song`, and the queue is always derived from the player's sequence state. Don't add a parallel queue list.
+- `PlayerController` wraps a just_audio `AudioPlayer`. Each `AudioSource` is tagged with a `_QueueItem` (its `Song` plus its position in the unshuffled order), and the queue is always derived from the player's sequence state. Don't add a parallel queue list.
+- Shuffle is the controller's own mode (`_shuffle`): it reorders the sources after the current one, and turning it off restores their unshuffled order (`unshuffledOrder()`). The queue is therefore always in play order. Never enable just_audio's shuffle mode: on Windows/Linux, just_audio_media_kit passes it to mpv, which reorders its own playlist and desyncs from just_audio. Queue edits never move songs before the current one, because just_audio publishes the new sequence before the platform reports the new index.
+- Insert into the queue by appending and then moving (see `playNext`): just_audio_media_kit's insert-at-index leaves the songs at the end of mpv's playlist.
 - `songs` and `upNext` are cached and rebuilt only when the sequence changes. just_audio re-emits sequence state on every playback event, so the controller notifies listeners only for visible changes.
 - In widgets, use `context.select` for the specific fields shown rather than `watch` on the whole controller.
 - Scrobbling: a new play is a new current source, or a repeat-one loop (detected through `positionDiscontinuityStream`). Each play sends "now playing", then a submission at `scrobbleThreshold()`: half the track or 4 minutes.

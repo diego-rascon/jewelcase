@@ -14,9 +14,34 @@ Duration? scrobbleThreshold(Duration total) {
   return Duration(seconds: min(total.inSeconds ~/ 2, 240));
 }
 
+/// The order [upcoming] goes back to when shuffle is turned off: carry on from
+/// the current song (at original position [current]) in the original order,
+/// then the still-unplayed songs that came before it.
+List<T> unshuffledOrder<T>(Iterable<T> upcoming, double Function(T) orderOf, double current) {
+  int byOrder(T a, T b) => orderOf(a).compareTo(orderOf(b));
+  return [
+    ...upcoming.where((x) => orderOf(x) > current).toList()..sort(byOrder),
+    ...upcoming.where((x) => orderOf(x) <= current).toList()..sort(byOrder),
+  ];
+}
+
+/// The tag of every source in the player: the song, and its position in the
+/// unshuffled order, which turning shuffle off restores.
+class _QueueItem {
+  const _QueueItem(this.song, this.order);
+
+  final Song song;
+  final double order;
+}
+
 /// App-facing playback API. Wraps a just_audio [AudioPlayer] whose sources are
 /// tagged with the [Song] they play, so the queue is always derived from the
 /// player itself rather than a parallel list that could drift.
+///
+/// Shuffle reorders the player's queue itself, so the queue is always in play
+/// order. just_audio's own shuffle mode stays off: its media_kit backend
+/// (Windows, Linux) hands it to mpv, which reorders its playlist without
+/// telling just_audio, and the two then disagree on what's playing.
 class PlayerController extends ChangeNotifier {
   PlayerController() {
     _subs = [
@@ -33,6 +58,13 @@ class PlayerController extends ChangeNotifier {
   late final List<StreamSubscription<Object?>> _subs;
 
   SubsonicClient? _client;
+  final _random = Random();
+
+  /// The shuffle mode. It outlives the queue, so it can be set before Play.
+  bool _shuffle = false;
+
+  /// Queue edits take several player calls each, so they run one at a time.
+  Future<void> _queueOps = Future.value();
 
   // Derived from the last sequence state, rebuilt only when it changes.
   SequenceState? _state;
@@ -54,27 +86,17 @@ class PlayerController extends ChangeNotifier {
 
   List<Song> get songs => _songs;
   int? get currentIndex => _state?.currentIndex;
-  Song? get current => _state?.currentSource?.tag as Song?;
-
-  /// Indices into [songs] in the order they will play (respects shuffle).
-  List<int> get playOrder {
-    final s = _state;
-    if (s == null || s.sequence.isEmpty) return const [];
-    return s.shuffleModeEnabled ? s.shuffleIndices : List.generate(s.sequence.length, (i) => i);
-  }
+  Song? get current => (_state?.currentSource?.tag as _QueueItem?)?.song;
 
   /// Songs after the current one, paired with their index in [songs].
-  List<(int, Song)> get upNext => _upNext ??= () {
-    final order = playOrder;
-    final pos = order.indexOf(currentIndex ?? -1);
-    return List<(int, Song)>.unmodifiable([for (final i in order.skip(pos + 1)) (i, _songs[i])]);
-  }();
+  List<(int, Song)> get upNext =>
+      _upNext ??= List.unmodifiable([for (var i = (currentIndex ?? -1) + 1; i < _songs.length; i++) (i, _songs[i])]);
 
   bool get hasQueue => _songs.isNotEmpty;
   bool get playing => audio.playing;
   bool get buffering =>
       audio.processingState == ProcessingState.loading || audio.processingState == ProcessingState.buffering;
-  bool get shuffle => audio.shuffleModeEnabled;
+  bool get shuffle => _shuffle;
   LoopMode get loopMode => audio.loopMode;
   double get volume => audio.volume;
 
@@ -83,37 +105,59 @@ class PlayerController extends ChangeNotifier {
 
   // ---- Commands ---------------------------------------------------------
 
-  Future<void> playSongs(List<Song> list, {int index = 0, bool shuffle = false}) async {
+  /// Replaces the queue with [list] and plays it from [index]. [shuffle] sets
+  /// the shuffle mode first; `null` keeps it. While shuffling, [index] plays
+  /// first (a random song if it's `null`) and the rest follow in random order.
+  Future<void> playSongs(List<Song> list, {int? index, bool? shuffle}) =>
+      _serial(() => _playSongs(list, index: index, shuffle: shuffle));
+
+  Future<void> _playSongs(List<Song> list, {int? index, bool? shuffle}) async {
+    if (shuffle != null) _setShuffle(shuffle);
     final client = _client;
     if (client == null || list.isEmpty) return;
-    final start = shuffle ? Random().nextInt(list.length) : index.clamp(0, list.length - 1);
-    await audio.setShuffleModeEnabled(false);
-    await audio.setAudioSources([for (final s in list) _source(client, s)], initialIndex: start, preload: false);
-    if (shuffle) {
-      await audio.shuffle();
-      await audio.setShuffleModeEnabled(true);
+    final items = [for (final (i, s) in list.indexed) _QueueItem(s, i.toDouble())];
+    var start = (index ?? 0).clamp(0, list.length - 1);
+    if (_shuffle) {
+      final first = items.removeAt(index == null ? _random.nextInt(list.length) : start);
+      items
+        ..shuffle(_random)
+        ..insert(0, first);
+      start = 0;
     }
+    await audio.setAudioSources([for (final item in items) _source(client, item)], initialIndex: start, preload: false);
     _startPlayback();
   }
 
-  Future<void> playNext(List<Song> list) async {
+  Future<void> playNext(List<Song> list) => _serial(() async {
     final client = _client;
     if (client == null || list.isEmpty) return;
-    if (!hasQueue) return playSongs(list);
-    final at = (currentIndex ?? -1) + 1;
-    for (final (i, s) in list.indexed) {
-      await audio.insertAudioSource(at + i, _source(client, s));
+    if (!hasQueue) return _playSongs(list);
+    final index = currentIndex;
+    final at = (index ?? -1) + 1;
+    // Unshuffled, these go between the current song and the one after it.
+    final cur = index == null ? -1.0 : _ordersFrom(index).first;
+    final next = _ordersFrom(at).where((o) => o > cur).fold(cur + 1, min);
+    final step = (next - cur) / (list.length + 1);
+    final end = audio.sequence.length;
+    await audio.addAudioSources([
+      for (final (i, s) in list.indexed) _source(client, _QueueItem(s, cur + step * (i + 1))),
+    ]);
+    // Appending then moving, rather than inserting: just_audio_media_kit
+    // appends inserted sources to mpv's playlist wherever they were meant to go.
+    if (at < end) {
+      for (var i = 0; i < list.length; i++) {
+        await audio.moveAudioSource(end + i, at + i);
+      }
     }
-  }
+  });
 
-  Future<void> addToQueue(List<Song> list) async {
+  Future<void> addToQueue(List<Song> list) => _serial(() async {
     final client = _client;
     if (client == null || list.isEmpty) return;
-    if (!hasQueue) return playSongs(list);
-    for (final s in list) {
-      await audio.addAudioSource(_source(client, s));
-    }
-  }
+    if (!hasQueue) return _playSongs(list);
+    final last = _ordersFrom(currentIndex ?? 0).fold(-1.0, max);
+    await audio.addAudioSources([for (final (i, s) in list.indexed) _source(client, _QueueItem(s, last + i + 1))]);
+  });
 
   Future<void> togglePlay() async => audio.playing ? await audio.pause() : _startPlayback();
   Future<void> play() async => _startPlayback();
@@ -137,9 +181,34 @@ class PlayerController extends ChangeNotifier {
     }
   }
 
-  Future<void> toggleShuffle() async {
-    if (!audio.shuffleModeEnabled) await audio.shuffle();
-    await audio.setShuffleModeEnabled(!audio.shuffleModeEnabled);
+  /// Flips the shuffle mode and reorders the songs after the current one:
+  /// randomly, or back to their unshuffled order. The current song and the
+  /// ones before it stay put, so the player's current index never moves.
+  Future<void> toggleShuffle() => _serial(() async {
+    _setShuffle(!_shuffle);
+    final client = _client;
+    final index = currentIndex;
+    if (client == null || index == null) return;
+    final sequence = audio.sequence;
+    if (index >= sequence.length - 1) return;
+    final cur = (sequence[index].tag as _QueueItem).order;
+    final upcoming = [for (final s in sequence.skip(index + 1)) s.tag as _QueueItem];
+    final List<_QueueItem> reordered;
+    if (_shuffle) {
+      // Renumber from the current order, so that turning shuffle off again
+      // restores it, including any manual reordering.
+      reordered = [for (final (i, item) in upcoming.indexed) _QueueItem(item.song, cur + i + 1)]..shuffle(_random);
+    } else {
+      reordered = unshuffledOrder(upcoming, (item) => item.order, cur);
+    }
+    await audio.removeAudioSourceRange(index + 1, sequence.length);
+    await audio.addAudioSources([for (final item in reordered) _source(client, item)]);
+  });
+
+  void _setShuffle(bool on) {
+    if (on == _shuffle) return;
+    _shuffle = on;
+    notifyListeners();
   }
 
   Future<void> cycleLoopMode() => audio.setLoopMode(switch (audio.loopMode) {
@@ -154,10 +223,10 @@ class PlayerController extends ChangeNotifier {
 
   Future<void> move(int from, int to) => audio.moveAudioSource(from, to);
 
-  Future<void> stop() async {
+  Future<void> stop() => _serial(() async {
     await audio.stop();
     await audio.clearAudioSources();
-  }
+  });
 
   // ---- Internals --------------------------------------------------------
 
@@ -165,7 +234,17 @@ class PlayerController extends ChangeNotifier {
   // isn't awaited. Its errors also arrive on playbackEventStream (_onError).
   void _startPlayback() => unawaited(audio.play().catchError((Object _) {}));
 
-  AudioSource _source(SubsonicClient client, Song song) => AudioSource.uri(client.streamUrl(song.id), tag: song);
+  AudioSource _source(SubsonicClient client, _QueueItem item) =>
+      AudioSource.uri(client.streamUrl(item.song.id), tag: item);
+
+  /// The unshuffled-order positions of the queue's songs from [start] on.
+  Iterable<double> _ordersFrom(int start) => audio.sequence.skip(start).map((s) => (s.tag as _QueueItem).order);
+
+  Future<void> _serial(Future<void> Function() op) {
+    final result = _queueOps.then((_) => op());
+    _queueOps = result.catchError((Object _) {});
+    return result;
+  }
 
   // just_audio re-emits the sequence state on every playback event; only
   // notify when something the UI shows actually changed.
@@ -173,7 +252,7 @@ class PlayerController extends ChangeNotifier {
     final prev = _state;
     _state = state;
     if (!identical(state.sequence, prev?.sequence)) {
-      _songs = List.unmodifiable([for (final s in state.sequence) s.tag as Song]);
+      _songs = List.unmodifiable([for (final s in state.sequence) (s.tag as _QueueItem).song]);
     }
     final source = state.currentSource;
     if (!identical(source, _playing)) {
@@ -183,8 +262,6 @@ class PlayerController extends ChangeNotifier {
     if (prev != null &&
         identical(state.sequence, prev.sequence) &&
         state.currentIndex == prev.currentIndex &&
-        state.shuffleModeEnabled == prev.shuffleModeEnabled &&
-        identical(state.shuffleIndices, prev.shuffleIndices) &&
         state.loopMode == prev.loopMode) {
       return;
     }
