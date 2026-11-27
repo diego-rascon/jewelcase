@@ -1,25 +1,25 @@
 import 'dart:async';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'theme.dart';
 
 enum Destination {
-  home('Home', Icons.home_outlined, Icons.home_rounded),
-  search('Search', Icons.search_rounded, Icons.search_rounded),
-  albums('Albums', Icons.album_outlined, Icons.album_rounded),
-  artists('Artists', Icons.person_outline_rounded, Icons.person_rounded),
-  songs('Songs', Icons.music_note_outlined, Icons.music_note_rounded),
-  playlists('Playlists', Icons.queue_music_outlined, Icons.queue_music_rounded),
+  home('Home', LucideIcons.house),
+  search('Search', LucideIcons.search),
+  albums('Albums', LucideIcons.disc3),
+  artists('Artists', LucideIcons.user),
+  songs('Songs', LucideIcons.music),
+  playlists('Playlists', LucideIcons.listMusic),
 
   /// Phone-only tab combining albums, artists, songs and playlists.
-  library('Library', Icons.library_music_outlined, Icons.library_music_rounded);
+  library('Library', LucideIcons.libraryBig);
 
-  const Destination(this.label, this.icon, this.selectedIcon);
+  const Destination(this.label, this.icon);
 
   final String label;
   final IconData icon;
-  final IconData selectedIcon;
 
   static const tabs = [home, search, library];
 
@@ -74,7 +74,24 @@ class NavController extends ChangeNotifier {
     });
   }
 
+  bool _queueOpen = false;
+
+  /// Desktop: whether the queue sidebar is open (see `AppShell`).
+  bool get queueOpen => _queueOpen;
+
+  void toggleQueue() {
+    _queueOpen = !_queueOpen;
+    notifyListeners();
+  }
+
+  int _selections = 0;
+
+  /// Counts picks from the sidebar or tabs ([select]), so a screen can tell
+  /// it was just picked, even when its section was already showing.
+  int get selections => _selections;
+
   void select(Destination d) {
+    _selections++;
     if (d == current) {
       keyFor(d).currentState?.popUntil((r) => r.isFirst);
     }

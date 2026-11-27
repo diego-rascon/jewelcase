@@ -1,12 +1,13 @@
 import 'dart:async';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../api/models.dart';
 import '../../audio/player_controller.dart';
 import '../../state/session.dart';
-import '../theme.dart';
+import '../navigation.dart';
 import '../widgets/async_view.dart';
 import '../widgets/layout.dart';
 import '../widgets/media_cards.dart';
@@ -27,6 +28,30 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _libraryId;
   Future<SearchResults>? _results;
 
+  late final NavController _nav;
+  late int _seenSelections;
+
+  @override
+  void initState() {
+    super.initState();
+    _nav = context.read<NavController>();
+    _seenSelections = _nav.selections;
+    _nav.addListener(_onNav);
+  }
+
+  /// Focuses the field whenever Search is picked from the sidebar or tabs.
+  /// (The first pick builds this screen, and `autofocus` covers it.)
+  void _onNav() {
+    if (_nav.selections == _seenSelections) return;
+    _seenSelections = _nav.selections;
+    if (_nav.current != Destination.search) return;
+    // After the frame that brings the section onstage, and only if this screen
+    // is on top: picking Search pops any page opened from it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && (ModalRoute.isCurrentOf(context) ?? false)) _focus.requestFocus();
+    });
+  }
+
   Future<SearchResults> _search(String q) =>
       context.read<SessionController>().client.search(q, musicFolderId: _libraryId);
 
@@ -43,6 +68,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _nav.removeListener(_onNav);
     _debounce?.cancel();
     _controller.dispose();
     _focus.dispose();
@@ -84,16 +110,16 @@ class _SearchScreenState extends State<SearchScreen> {
                     child: TextField(
                       controller: _controller,
                       focusNode: _focus,
-                      autofocus: isWide(context),
+                      autofocus: true,
                       onChanged: _onChanged,
                       textInputAction: TextInputAction.search,
                       decoration: InputDecoration(
                         hintText: 'Artists, albums, songs',
-                        prefixIcon: const Icon(Icons.search_rounded),
+                        prefixIcon: const Icon(LucideIcons.search),
                         suffixIcon: _controller.text.isEmpty
                             ? null
                             : IconButton(
-                                icon: const Icon(Icons.close_rounded),
+                                icon: const Icon(LucideIcons.x),
                                 onPressed: () {
                                   _controller.clear();
                                   _onChanged('');
@@ -109,7 +135,7 @@ class _SearchScreenState extends State<SearchScreen> {
             Expanded(
               child: _results == null
                   ? const EmptyState(
-                      icon: Icons.manage_search_rounded,
+                      icon: LucideIcons.textSearch,
                       title: 'Find something to play',
                       message: 'Search for artists, albums and songs in your library.',
                     )
@@ -122,7 +148,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         }
                         final r = snap.data!;
                         if (r.isEmpty) {
-                          return EmptyState(icon: Icons.search_off_rounded, title: 'No results for “$_query”');
+                          return EmptyState(icon: LucideIcons.searchX, title: 'No results for “$_query”');
                         }
                         return _Results(results: r);
                       },

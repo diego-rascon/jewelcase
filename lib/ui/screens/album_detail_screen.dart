@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +8,7 @@ import '../../state/favorites.dart';
 import '../../state/session.dart';
 import '../actions.dart';
 import '../format.dart';
+import '../theme.dart';
 import '../widgets/async_view.dart';
 import '../widgets/cover_art.dart';
 import '../widgets/detail_header.dart';
@@ -52,7 +54,7 @@ class _AlbumView extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(10, 18, 10, 6),
             child: Row(
               children: [
-                Icon(Icons.album_rounded, size: 18, color: theme.colorScheme.onSurfaceVariant),
+                Icon(LucideIcons.disc3, size: IconSizes.small, color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 8),
                 Text('Disc ${disc ?? 1}', style: theme.textTheme.titleSmall),
               ],
@@ -80,12 +82,12 @@ class _AlbumView extends StatelessWidget {
       title: album.name,
       subtitle: album.artist == null ? null : _ArtistLink(album: album),
       meta: joinDot([album.year, album.genre, plural(songs.length, 'song'), formatLongDuration(totalDuration)]),
-      onPlay: songs.isEmpty ? null : () => player.playSongs(songs),
-      onShuffle: songs.isEmpty ? null : () => player.playSongs(songs, shuffle: true),
+      onPlay: songs.isEmpty ? null : (shuffle) => player.playSongs(songs, shuffle: shuffle),
       actions: [
-        FavoriteButton(id: album.id, kind: FavoriteKind.album, size: 26),
-        MoreButton(actions: () => albumActions(context, album, includePlay: false)),
+        FavoriteButton(id: album.id, kind: FavoriteKind.album),
+        const DownloadButton(),
       ],
+      menu: MoreButton(actions: () => albumActions(context, album, includePlay: false)),
       slivers: [
         SongListScope(
           child: PagedSliver(sliver: SliverList.list(children: rows)),

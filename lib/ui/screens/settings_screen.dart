@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/session.dart';
 import '../actions.dart';
+import '../theme.dart';
 import '../widgets/layout.dart';
+import '../widgets/popup_menu.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -26,7 +31,7 @@ class SettingsScreen extends StatelessWidget {
             title: 'Server',
             children: [
               ListTile(
-                leading: const Icon(Icons.dns_rounded),
+                leading: const Icon(LucideIcons.server),
                 title: Text(creds?.baseUrl ?? ''),
                 subtitle: Text('Signed in as ${creds?.username ?? ''}'),
               ),
@@ -37,7 +42,7 @@ class SettingsScreen extends StatelessWidget {
             children: [
               if (session.libraries.length < 2)
                 const ListTile(
-                  leading: Icon(Icons.library_music_rounded),
+                  leading: Icon(LucideIcons.libraryBig),
                   title: Text('All music'),
                   subtitle: Text('Your server has a single library'),
                 )
@@ -49,7 +54,7 @@ class SettingsScreen extends StatelessWidget {
             title: 'Storage',
             children: [
               ListTile(
-                leading: const Icon(Icons.image_outlined),
+                leading: const Icon(LucideIcons.image),
                 title: const Text('Clear artwork cache'),
                 onTap: () => guarded(context, () async {
                   await DefaultCacheManager().emptyCache();
@@ -70,7 +75,7 @@ class SettingsScreen extends StatelessWidget {
                 Navigator.of(context).popUntil((r) => r.isFirst);
                 await session.signOut();
               },
-              icon: const Icon(Icons.logout_rounded),
+              icon: const Icon(LucideIcons.logOut),
               label: const Text('Sign out'),
             ),
           ),
@@ -123,21 +128,30 @@ class LibraryPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
     final current = session.library;
-    return PopupMenuButton<String?>(
-      tooltip: 'Choose library',
-      initialValue: session.libraryId,
-      onSelected: session.selectLibrary,
-      itemBuilder: (context) => [
-        const PopupMenuItem(value: null, child: Text('All libraries')),
-        for (final l in session.libraries) PopupMenuItem(value: l.id, child: Text(l.name)),
-      ],
-      child: ListTile(
+    // Dense is the sidebar's picker, so its icons match the sidebar items.
+    final iconSize = dense ? IconSizes.small : null;
+    return Builder(
+      builder: (context) => ListTile(
         dense: dense,
-        leading: const Icon(Icons.library_music_rounded),
+        leading: Icon(LucideIcons.libraryBig, size: iconSize),
         title: Text(current?.name ?? 'All libraries', maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: dense ? null : const Text('Tap to switch'),
-        trailing: const Icon(Icons.unfold_more_rounded),
+        trailing: Icon(LucideIcons.chevronsUpDown, size: iconSize),
+        onTap: () => unawaited(_pick(context, session)),
       ),
     );
+  }
+
+  Future<void> _pick(BuildContext context, SessionController session) async {
+    MenuAction choice(String? id, String label) => MenuAction(
+      label,
+      id == session.libraryId ? LucideIcons.check : null,
+      () => unawaited(guarded(context, () => session.selectLibrary(id))),
+    );
+    final picked = await pickMenuAction(context, globalRect(context), [
+      choice(null, 'All libraries'),
+      for (final l in session.libraries) choice(l.id, l.name),
+    ]);
+    if (context.mounted) picked?.onSelected();
   }
 }

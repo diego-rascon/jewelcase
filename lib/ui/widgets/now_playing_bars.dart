@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/gestures.dart' show TapGestureRecognizer;
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -9,10 +9,15 @@ import '../../api/models.dart';
 import '../../audio/player_controller.dart';
 import '../../state/favorites.dart';
 import '../actions.dart';
+import '../navigation.dart';
 import '../screens/now_playing_screen.dart';
+import '../theme.dart';
 import 'cover_art.dart';
+import 'filled_icon.dart';
+import 'frosted.dart';
 import 'player_controls.dart';
 import 'song_tile.dart';
+import 'thin_slider.dart';
 
 /// Desktop: lays [child] (the content area) out with the [PlayerBar]
 /// floating over its bottom edge. The content's `MediaQuery` bottom padding
@@ -38,7 +43,12 @@ class PlayerBarHost extends StatelessWidget {
           left: PlayerBar.margin,
           right: PlayerBar.margin,
           bottom: PlayerBar.margin + mq.padding.bottom,
-          child: const PlayerBar(),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: PlayerBar.maxWidth),
+              child: const PlayerBar(),
+            ),
+          ),
         ),
       ],
     );
@@ -52,6 +62,10 @@ class PlayerBar extends StatelessWidget {
 
   static const height = 64.0;
   static const margin = 16.0;
+
+  /// Wide enough for every control plus the track panel at its full 560;
+  /// past this the bar stays centered instead of stretching.
+  static const maxWidth = 1200.0;
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +87,10 @@ class PlayerBar extends StatelessWidget {
               key: const ValueKey('bar'),
               height: height,
               padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: LayoutBuilder(builder: (context, constraints) => _barRow(context, song, constraints)),
+              child: IconButtonTheme(
+                data: smallIconButtons,
+                child: LayoutBuilder(builder: (context, constraints) => _barRow(context, song, constraints)),
+              ),
             ),
     );
   }
@@ -85,7 +102,7 @@ class PlayerBar extends StatelessWidget {
     final showSlider = constraints.maxWidth >= 960;
     return Row(
       children: [
-        TransportControls(size: 0.8, showModes: showModes),
+        TransportControls(uniform: true, showModes: showModes),
         const SizedBox(width: 8),
         Expanded(
           child: Center(
@@ -97,7 +114,7 @@ class PlayerBar extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 desktop: true,
                 trailing: [
-                  FavoriteButton(id: song.id, kind: FavoriteKind.song, size: 20),
+                  FavoriteButton(id: song.id, kind: FavoriteKind.song),
                   MoreButton(actions: () => songActions(context, song)),
                 ],
               ),
@@ -105,23 +122,42 @@ class PlayerBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        IconButton(
-          tooltip: 'Queue',
-          onPressed: () => openNowPlaying(context, showQueue: true),
-          icon: const Icon(Icons.queue_music_rounded),
-        ),
+        const _QueueButton(),
         VolumeControl(width: showSlider ? 100 : null),
         IconButton(
           tooltip: 'Now playing',
           onPressed: () => openNowPlaying(context),
-          icon: const Icon(Icons.open_in_full_rounded, size: 20),
+          icon: const Icon(LucideIcons.maximize2),
         ),
       ],
     );
   }
 }
 
-/// Phone: floating card above the tab bar. Tap or swipe up to expand.
+/// Toggles the queue sidebar, or opens the queue in Now Playing when the
+/// window is too narrow for the sidebar.
+class _QueueButton extends StatelessWidget {
+  const _QueueButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final nav = context.read<NavController>();
+    final fits = fitsQueueSidebar(context);
+    final shown = fits && context.select<NavController, bool>((n) => n.queueOpen);
+    return IconButton(
+      tooltip: shown ? 'Hide queue' : 'Queue',
+      isSelected: shown,
+      onPressed: fits ? nav.toggleQueue : () => openNowPlaying(context, showQueue: true),
+      icon: const Icon(LucideIcons.listMusic),
+      style: IconButton.styleFrom(
+        backgroundColor: shown ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12) : null,
+      ),
+    );
+  }
+}
+
+/// Phone: floating card above the tab bar. Tap to expand, or drag it up and
+/// the player follows the finger.
 class MiniPlayer extends StatelessWidget {
   const MiniPlayer({super.key});
 
@@ -133,26 +169,24 @@ class MiniPlayer extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
-      child: GestureDetector(
-        onTap: () => openNowPlaying(context),
-        onVerticalDragEnd: (d) {
-          if ((d.primaryVelocity ?? 0) < -200) openNowPlaying(context);
-        },
+      child: NowPlayingOpener(
         child: _FloatingCard(
           height: 62,
-          child: _TrackPanel(
-            song: song,
-            artSize: 46,
-            padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
-            // A square cover would poke out of the card's rounded end.
-            roundArt: true,
-            trailing: [
-              IconButton(
-                onPressed: p.togglePlay,
-                icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, size: 30),
-              ),
-              IconButton(onPressed: p.next, icon: const Icon(Icons.skip_next_rounded, size: 28)),
-            ],
+          child: IconButtonTheme(
+            data: smallIconButtons,
+            child: _TrackPanel(
+              song: song,
+              artSize: 46,
+              padding: const EdgeInsets.fromLTRB(_FloatingCard.artInset, 8, 10, 8),
+              trailing: [
+                IconButton(
+                  tooltip: playing ? 'Pause' : 'Play',
+                  onPressed: p.togglePlay,
+                  icon: FilledIcon(playing ? FilledIcons.pause : FilledIcons.play),
+                ),
+                IconButton(tooltip: 'Next', onPressed: p.next, icon: const FilledIcon(FilledIcons.skipForward)),
+              ],
+            ),
           ),
         ),
       ),
@@ -160,45 +194,36 @@ class MiniPlayer extends StatelessWidget {
   }
 }
 
-/// The frosted, shadowed, fully rounded card both [PlayerBar] and
-/// [MiniPlayer] float in.
+/// The frosted, shadowed, rounded card both [PlayerBar] and [MiniPlayer]
+/// float in.
 class _FloatingCard extends StatelessWidget {
   const _FloatingCard({super.key, required this.height, required this.child, this.padding = EdgeInsets.zero});
+
+  /// The cover's corner radius, the same as the song tiles' covers.
+  static const artRadius = 6.0;
+
+  /// How far the [MiniPlayer]'s cover sits in from the card's edge.
+  static const artInset = 8.0;
+
+  /// Concentric with the cover: its radius plus the gap around it, so the
+  /// cover's corners follow the card's. Matches the app's other 14px cards.
+  static const radius = BorderRadius.all(Radius.circular(artRadius + artInset));
 
   final double height;
   final EdgeInsets padding;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(height / 2);
-    final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 24, offset: Offset(0, 8))],
-      ),
-      child: ClipRRect(
-        borderRadius: radius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-          child: Container(
-            height: height,
-            padding: padding,
-            decoration: BoxDecoration(
-              // The sidebar's color and edge, so the chrome reads as one
-              // material. Slightly see-through for the frosted look; over
-              // plain content it comes out the same as the sidebar.
-              color: scheme.surfaceContainerLow.withValues(alpha: 0.9),
-              borderRadius: radius,
-              border: Border.all(color: scheme.outlineVariant),
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      borderRadius: radius,
+      boxShadow: [BoxShadow(color: Colors.black54, blurRadius: 24, offset: Offset(0, 8))],
+    ),
+    child: Frosted(
+      borderRadius: radius,
+      child: Container(height: height, padding: padding, child: child),
+    ),
+  );
 }
 
 /// Cover, title, "artist — album" and a thin progress line for the current
@@ -214,7 +239,6 @@ class _TrackPanel extends StatelessWidget {
     required this.artSize,
     required this.padding,
     this.desktop = false,
-    this.roundArt = false,
     this.trailing = const [],
   });
 
@@ -222,7 +246,6 @@ class _TrackPanel extends StatelessWidget {
   final double artSize;
   final EdgeInsets padding;
   final bool desktop;
-  final bool roundArt;
   final List<Widget> trailing;
 
   @override
@@ -233,7 +256,7 @@ class _TrackPanel extends StatelessWidget {
       tag: nowPlayingHeroTag,
       child: SizedBox(
         width: artSize,
-        child: CoverArt(id: song.coverArt, seed: song.albumId, radius: 6, circle: roundArt),
+        child: CoverArt(id: song.coverArt, seed: song.albumId, radius: _FloatingCard.artRadius),
       ),
     );
     if (desktop) {
@@ -364,74 +387,30 @@ class _SubtitleState extends State<_Subtitle> {
   }
 }
 
-/// A thin, round-ended progress line under the track's text. When
-/// [seekable], it thickens on hover and a click or horizontal drag seeks; the
-/// drag position is held locally while scrubbing.
-class _ThinProgress extends StatefulWidget {
+/// The song's progress as a [ThinSlider] under the track's text. When
+/// [seekable], a click or horizontal drag seeks.
+class _ThinProgress extends StatelessWidget {
   const _ThinProgress({required this.seekable});
 
   final bool seekable;
 
   @override
-  State<_ThinProgress> createState() => _ThinProgressState();
-}
-
-class _ThinProgressState extends State<_ThinProgress> {
-  bool _hover = false;
-
-  /// Fraction of the track while scrubbing.
-  double? _drag;
-
-  @override
   Widget build(BuildContext context) {
     final p = context.read<PlayerController>();
-    final color = Theme.of(context).colorScheme.primary;
-
     final bar = RepaintBoundary(
       child: StreamBuilder<Duration>(
         stream: p.position,
         builder: (context, snap) {
-          final total = p.duration.inMilliseconds;
-          final v = _drag ?? (total == 0 ? 0.0 : ((snap.data?.inMilliseconds ?? 0) / total).clamp(0.0, 1.0));
-          return LinearProgressIndicator(
-            value: v,
-            minHeight: _hover || _drag != null ? 4 : 2,
-            borderRadius: BorderRadius.circular(2),
-            color: color,
-            backgroundColor: color.withValues(alpha: 0.15),
+          final total = p.duration;
+          return ThinSlider(
+            value: total == Duration.zero ? 0 : (snap.data ?? Duration.zero).inMilliseconds / total.inMilliseconds,
+            onChangeEnd: seekable ? (f) => unawaited(guarded(context, () => p.seek(total * f))) : null,
           );
         },
       ),
     );
-    // Phones: a fixed gap above the line. Desktop: a taller hit area than the
-    // line itself, so it's easy to grab.
-    if (!widget.seekable) {
-      return Padding(padding: const EdgeInsets.only(top: 4), child: bar);
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        double fraction(Offset local) => (local.dx / constraints.maxWidth).clamp(0.0, 1.0);
-        void seek(double f) => unawaited(guarded(context, () => p.seek(p.duration * f)));
-        return MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _hover = true),
-          onExit: (_) => setState(() => _hover = false),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapUp: (d) => seek(fraction(d.localPosition)),
-            onHorizontalDragStart: (d) => setState(() => _drag = fraction(d.localPosition)),
-            onHorizontalDragUpdate: (d) => setState(() => _drag = fraction(d.localPosition)),
-            onHorizontalDragEnd: (_) {
-              final f = _drag;
-              if (f != null) seek(f);
-              setState(() => _drag = null);
-            },
-            onHorizontalDragCancel: () => setState(() => _drag = null),
-            child: SizedBox(height: 12, child: Center(child: bar)),
-          ),
-        );
-      },
-    );
+    // Phones: a fixed gap above the line. Desktop: the slider's taller hit
+    // area leaves room around it.
+    return seekable ? bar : Padding(padding: const EdgeInsets.only(top: 4), child: bar);
   }
 }

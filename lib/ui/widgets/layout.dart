@@ -1,11 +1,14 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../theme.dart';
+import 'filled_icon.dart';
 
 double pagePadding(BuildContext context) => isWide(context) ? 32 : 16;
 
 /// Ends a scroll view with room for what floats over the bottom of the
-/// content (the desktop player bar, passed down as `MediaQuery` padding), so
+/// content (the desktop player bar, or the phone mini player and tab bar,
+/// passed down as `MediaQuery` padding), so
 /// the last items can scroll clear of it. Use [bottomInset] for a box list's
 /// own padding.
 class BottomInset extends StatelessWidget {
@@ -122,8 +125,8 @@ class _ShelfState extends State<Shelf> {
               children: [
                 ?widget.trailing,
                 if (isWide(context)) ...[
-                  IconButton(onPressed: () => _page(-1), icon: const Icon(Icons.chevron_left_rounded)),
-                  IconButton(onPressed: () => _page(1), icon: const Icon(Icons.chevron_right_rounded)),
+                  IconButton(onPressed: () => _page(-1), icon: const Icon(LucideIcons.chevronLeft)),
+                  IconButton(onPressed: () => _page(1), icon: const Icon(LucideIcons.chevronRight)),
                 ],
               ],
             ),
@@ -158,14 +161,11 @@ class FavoritesFilterChip extends StatelessWidget {
     // The default label and icon colors are too light on the selected fill.
     final fg = selected ? scheme.onPrimary : scheme.onSurface;
     return FilterChip(
-      // The label's glyphs sit below the center of its line box, so the heart
+      // The label's glyphs sit below the center of its line box, so the star
       // drops 1px to line up with the text optically.
       avatar: Transform.translate(
         offset: const Offset(0, 1),
-        child: Icon(
-          selected ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-          color: selected ? scheme.onPrimary : scheme.primary,
-        ),
+        child: FilledIcon(FilledIcons.star, filled: selected, color: selected ? scheme.onPrimary : scheme.primary),
       ),
       label: const Text('Favorites'),
       labelStyle: Theme.of(context).textTheme.labelLarge

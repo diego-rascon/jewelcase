@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -13,7 +14,7 @@ class CoverArt extends StatelessWidget {
     this.size,
     this.radius = 8,
     this.circle = false,
-    this.icon = Icons.album_rounded,
+    this.icon = LucideIcons.disc3,
     this.seed,
   });
 

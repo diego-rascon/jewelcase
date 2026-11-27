@@ -8,7 +8,7 @@ import '../api/subsonic_client.dart';
 enum FavoriteKind { song, album, artist }
 
 /// Single source of truth for what is starred (across all libraries), so every
-/// heart icon in the app stays in sync. Toggles are optimistic and roll back
+/// star icon in the app stays in sync. Toggles are optimistic and roll back
 /// on failure.
 class FavoritesController extends ChangeNotifier {
   SubsonicClient? _client;

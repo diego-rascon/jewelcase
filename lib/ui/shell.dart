@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -17,6 +18,7 @@ import 'screens/home_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/playlist_detail_screen.dart';
 import 'screens/playlists_screen.dart';
+import 'screens/queue_view.dart';
 import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/songs_screen.dart';
@@ -24,10 +26,12 @@ import 'theme.dart';
 import 'widgets/async_view.dart';
 import 'widgets/cover_art.dart';
 import 'widgets/disc_logo.dart';
+import 'widgets/frosted.dart';
 import 'widgets/now_playing_bars.dart';
+import 'widgets/side_panel.dart';
 
-/// Adaptive app frame: sidebar + player bar on desktop/tablet, bottom tabs +
-/// mini player on phones.
+/// Adaptive app frame: sidebar + player bar (+ queue sidebar) on
+/// desktop/tablet, bottom tabs + mini player on phones.
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
 
@@ -35,6 +39,7 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final nav = context.watch<NavController>();
     final wide = isWide(context);
+    final hasSong = context.select<PlayerController, bool>((p) => p.current != null);
 
     final content = NavigatorPopHandler(
       onPopWithResult: (_) => nav.pop(),
@@ -49,22 +54,39 @@ class AppShell extends StatelessWidget {
                 Expanded(
                   child: ClipRect(child: PlayerBarHost(child: content)),
                 ),
+                SidePanel(
+                  open: nav.queueOpen && hasSong && fitsQueueSidebar(context),
+                  width: queueSidebarWidth,
+                  child: const _QueueSidebar(),
+                ),
               ],
             ),
           )
+        // The mini player and the tab bar float over the content, which
+        // scrolls under them so their blur has something to show. With
+        // `extendBody`, the content's `MediaQuery` bottom padding covers both
+        // (see `BottomInset`). The gaps around the mini player card don't
+        // take hits, so taps there reach the content.
         : Scaffold(
-            body: Column(
+            extendBody: true,
+            body: content,
+            bottomNavigationBar: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(child: content),
                 const MiniPlayer(),
-              ],
-            ),
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: Destination.tabs.indexOf(nav.current).clamp(0, Destination.tabs.length - 1),
-              onDestinationSelected: (i) => nav.select(Destination.tabs[i]),
-              destinations: [
-                for (final d in Destination.tabs)
-                  NavigationDestination(icon: Icon(d.icon), selectedIcon: Icon(d.selectedIcon), label: d.label),
+                Frosted(
+                  borderRadius: BorderRadius.zero,
+                  edge: FrostedEdge.top,
+                  child: NavigationBar(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    selectedIndex: Destination.tabs.indexOf(nav.current).clamp(0, Destination.tabs.length - 1),
+                    onDestinationSelected: (i) => nav.select(Destination.tabs[i]),
+                    destinations: [
+                      for (final d in Destination.tabs) NavigationDestination(icon: Icon(d.icon), label: d.label),
+                    ],
+                  ),
+                ),
               ],
             ),
           );
@@ -134,12 +156,7 @@ class _Sidebar extends StatelessWidget {
 
     Widget item(Destination d) {
       final selected = nav.current == d;
-      return _SidebarItem(
-        selected: selected,
-        onTap: () => nav.select(d),
-        leading: Icon(selected ? d.selectedIcon : d.icon),
-        label: d.label,
-      );
+      return _SidebarItem(selected: selected, onTap: () => nav.select(d), leading: Icon(d.icon), label: d.label);
     }
 
     // A Material (not a plain colored box) so the items can paint their ink.
@@ -175,10 +192,10 @@ class _Sidebar extends StatelessWidget {
                 trailing: IconButton(
                   tooltip: 'New playlist',
                   visualDensity: VisualDensity.compact,
-                  iconSize: 18,
+                  iconSize: IconSizes.small,
                   color: scheme.onSurfaceVariant,
                   onPressed: () => createPlaylist(context),
-                  icon: const Icon(Icons.add_rounded),
+                  icon: const Icon(LucideIcons.plus),
                 ),
               ),
               const Expanded(child: _SidebarPlaylists()),
@@ -189,7 +206,7 @@ class _Sidebar extends StatelessWidget {
                 child: _SidebarItem(
                   selected: false,
                   onTap: () => nav.push(const SettingsScreen()),
-                  leading: const Icon(Icons.settings_outlined),
+                  leading: const Icon(LucideIcons.settings),
                   label: 'Settings',
                 ),
               ),
@@ -261,8 +278,14 @@ class _SidebarItem extends StatelessWidget {
               children: [
                 // Icons pick up the item's color and size; covers fill the box.
                 IconTheme.merge(
-                  data: IconThemeData(size: 18, color: selected ? scheme.onSurface : scheme.onSurfaceVariant),
-                  child: SizedBox.square(dimension: 20, child: Center(child: leading)),
+                  data: IconThemeData(
+                    size: IconSizes.small,
+                    color: selected ? scheme.onSurface : scheme.onSurfaceVariant,
+                  ),
+                  child: SizedBox.square(
+                    dimension: IconSizes.medium,
+                    child: Center(child: leading),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -327,11 +350,27 @@ class _SidebarPlaylists extends StatelessWidget {
           return _SidebarItem(
             selected: open == name,
             onTap: () => nav.openIn(Destination.playlists, PlaylistDetailScreen(playlist: p), name: name),
-            leading: CoverArt(id: p.coverArt, seed: p.id, radius: 4, icon: Icons.queue_music_rounded),
+            leading: CoverArt(id: p.coverArt, seed: p.id, radius: 4, icon: LucideIcons.listMusic),
             label: p.name,
           );
         },
       ),
+    );
+  }
+}
+
+/// Desktop: the queue along the right edge, toggled from the [PlayerBar].
+/// The same material as [_Sidebar], mirrored.
+class _QueueSidebar extends StatelessWidget {
+  const _QueueSidebar();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerLow,
+      shape: Border(left: BorderSide(color: scheme.outlineVariant)),
+      child: SafeArea(left: false, child: QueueView(onClose: context.read<NavController>().toggleQueue)),
     );
   }
 }

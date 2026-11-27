@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -32,7 +33,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
       backgroundColor: Colors.transparent,
       floatingActionButton: widget.showTitle
           ? null
-          : FloatingActionButton(onPressed: _create, tooltip: 'New playlist', child: const Icon(Icons.add_rounded)),
+          : FloatingActionButton(onPressed: _create, tooltip: 'New playlist', child: const Icon(LucideIcons.plus)),
       body: SafeArea(
         bottom: false,
         child: AsyncView<List<Playlist>>(
@@ -51,7 +52,7 @@ class _PlaylistsScreenState extends State<PlaylistsScreen> {
                           Expanded(child: Text('Playlists', style: theme.textTheme.headlineMedium)),
                           FilledButton.tonalIcon(
                             onPressed: _create,
-                            icon: const Icon(Icons.add_rounded),
+                            icon: const Icon(LucideIcons.plus),
                             label: const Text('New playlist'),
                           ),
                         ],

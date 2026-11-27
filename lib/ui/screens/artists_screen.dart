@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -108,11 +109,11 @@ class _ArtistListState extends State<_ArtistList> {
             hasScrollBody: false,
             child: _favoritesOnly
                 ? const EmptyState(
-                    icon: Icons.favorite_border_rounded,
+                    icon: LucideIcons.star,
                     title: 'No favorite artists',
                     message: 'Use “Add to favorites” on any artist to see them here.',
                   )
-                : const EmptyState(icon: Icons.person_outline_rounded, title: 'No artists found'),
+                : const EmptyState(icon: LucideIcons.user, title: 'No artists found'),
           )
         else
           SliverPadding(
@@ -143,11 +144,11 @@ class _ArtistRow extends StatelessWidget {
         onTap: () => openArtist(context, artist.id),
         leading: SizedBox(
           width: 48,
-          child: CoverArt(id: artist.coverArt, seed: artist.id, circle: true, icon: Icons.person_rounded),
+          child: CoverArt(id: artist.coverArt, seed: artist.id, circle: true, icon: LucideIcons.user),
         ),
         title: Text(artist.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.titleMedium),
         subtitle: artist.albumCount > 0 ? Text(plural(artist.albumCount, 'album')) : null,
-        trailing: const Icon(Icons.chevron_right_rounded),
+        trailing: const Icon(LucideIcons.chevronRight),
       ),
     );
   }

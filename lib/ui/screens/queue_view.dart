@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -7,21 +8,32 @@ import '../../api/models.dart';
 import '../../audio/player_controller.dart';
 import '../actions.dart';
 import '../format.dart';
-import '../widgets/cover_art.dart';
+import '../theme.dart';
+import '../widgets/layout.dart';
+import '../widgets/song_tile.dart';
 
-/// The play queue: what's on now and what's up next. Drag to reorder (when
-/// not shuffling), swipe or ✕ to remove, tap to jump.
+/// The play queue: what's on now and what's up next. Drag to reorder, swipe
+/// or ✕ to remove, tap to jump.
 class QueueView extends StatelessWidget {
-  const QueueView({super.key, this.foreground});
+  const QueueView({super.key, this.foreground, this.controller, this.header, this.onClose});
 
   final Color? foreground;
+
+  /// Side panels: puts a "Queue" title with a close button at the top.
+  final VoidCallback? onClose;
+
+  /// Scrolls along above the list, such as a sheet's drag handle.
+  final Widget? header;
+
+  /// The scroll controller, such as the one a [DraggableScrollableSheet] hands out.
+  final ScrollController? controller;
 
   @override
   Widget build(BuildContext context) {
     final p = context.read<PlayerController>();
     // `upNext` is cached by the controller, so a new list means the queue changed.
-    final (current, upNext, shuffle) = context.select<PlayerController, (Song?, List<(int, Song)>, bool)>(
-      (p) => (p.current, p.upNext, p.shuffle),
+    final (current, upNext) = context.select<PlayerController, (Song?, List<(int, Song)>)>(
+      (p) => (p.current, p.upNext),
     );
     final theme = Theme.of(context);
     final fg = foreground ?? theme.colorScheme.onSurface;
@@ -34,7 +46,31 @@ class QueueView extends StatelessWidget {
     }
 
     return CustomScrollView(
+      controller: controller,
       slivers: [
+        if (header != null) SliverToBoxAdapter(child: header),
+        if (onClose != null)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 4),
+            sliver: SliverToBoxAdapter(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Queue',
+                      style: theme.textTheme.titleLarge?.copyWith(color: fg, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close queue',
+                    color: fg.withValues(alpha: 0.7),
+                    onPressed: onClose,
+                    icon: const Icon(LucideIcons.x),
+                  ),
+                ],
+              ),
+            ),
+          ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           sliver: SliverToBoxAdapter(child: Text('Now playing', style: heading)),
@@ -83,9 +119,13 @@ class QueueView extends StatelessWidget {
                 onDismissed: (_) => p.removeAt(index),
                 background: Container(
                   alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 24),
-                  color: theme.colorScheme.errorContainer,
-                  child: Icon(Icons.delete_outline_rounded, color: theme.colorScheme.onErrorContainer),
+                  margin: const EdgeInsets.symmetric(horizontal: _QueueRow.inset),
+                  padding: const EdgeInsets.only(right: 16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.errorContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(LucideIcons.trash2, color: theme.colorScheme.onErrorContainer),
                 ),
                 child: _QueueRow(
                   song: song,
@@ -96,33 +136,36 @@ class QueueView extends StatelessWidget {
                     children: [
                       IconButton(
                         tooltip: 'Remove',
-                        iconSize: 18,
+                        iconSize: IconSizes.small,
                         color: fg.withValues(alpha: 0.6),
                         onPressed: () => p.removeAt(index),
-                        icon: const Icon(Icons.close_rounded),
+                        icon: const Icon(LucideIcons.x),
                       ),
-                      if (!shuffle)
-                        ReorderableDragStartListener(
-                          index: i,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Icon(Icons.drag_indicator_rounded, color: fg.withValues(alpha: 0.5)),
-                          ),
+                      ReorderableDragStartListener(
+                        index: i,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Icon(LucideIcons.gripVertical, color: fg.withValues(alpha: 0.5)),
                         ),
+                      ),
                     ],
                   ),
                 ),
               );
             },
           ),
-        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        SliverToBoxAdapter(child: SizedBox(height: 24 + bottomInset(context))),
       ],
     );
   }
 }
 
-class _QueueRow extends StatelessWidget {
+class _QueueRow extends StatefulWidget {
   const _QueueRow({required this.song, required this.fg, this.onTap, this.trailing, this.highlighted = false});
+
+  /// Keeps the rounded hover shape off the panel's edges. With the tile's own
+  /// left padding, covers line up with the headings.
+  static const inset = 8.0;
 
   final Song song;
   final Color fg;
@@ -131,33 +174,48 @@ class _QueueRow extends StatelessWidget {
   final bool highlighted;
 
   @override
+  State<_QueueRow> createState() => _QueueRowState();
+}
+
+class _QueueRowState extends State<_QueueRow> {
+  bool _hover = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      type: MaterialType.transparency,
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.only(left: 16, right: 4),
-        leading: SizedBox(
-          width: 44,
-          child: CoverArt(id: song.coverArt, seed: song.albumId, radius: 6),
-        ),
-        title: Text(
-          song.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: fg,
-            fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
+    final _QueueRow(:song, :fg, :onTap) = widget;
+    final muted = TextStyle(color: fg.withValues(alpha: 0.65));
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: _QueueRow.inset),
+      child: Material(
+        type: MaterialType.transparency,
+        child: MouseRegion(
+          onEnter: (_) => setState(() => _hover = true),
+          onExit: (_) => setState(() => _hover = false),
+          child: ListTile(
+            onTap: onTap,
+            contentPadding: const EdgeInsets.only(left: 16 - _QueueRow.inset),
+            leading: SongCover(song: song, hovered: _hover && onTap != null),
+            title: Text(
+              song.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: fg,
+                fontWeight: widget.highlighted ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+            subtitle: Text(song.artist ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: muted),
+            trailing:
+                widget.trailing ??
+                // The up-next buttons carry their own padding; a bare duration
+                // needs the same to line up with them.
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(formatDuration(song.duration), style: muted),
+                ),
           ),
         ),
-        subtitle: Text(
-          song.artist ?? '',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: fg.withValues(alpha: 0.65)),
-        ),
-        trailing: trailing ?? Text(formatDuration(song.duration), style: TextStyle(color: fg.withValues(alpha: 0.65))),
       ),
     );
   }

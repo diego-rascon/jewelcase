@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// Loads data with [load] and re-runs it whenever [deps] change (e.g. the
@@ -70,7 +71,7 @@ class ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => EmptyState(
-    icon: Icons.cloud_off_rounded,
+    icon: LucideIcons.cloudOff,
     title: 'Something went wrong',
     message: message,
     action: onRetry == null ? null : FilledButton.tonal(onPressed: onRetry, child: const Text('Try again')),

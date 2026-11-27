@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -79,20 +80,19 @@ class _ArtistViewState extends State<_ArtistView> {
 
     final visibleTop = _showAllTop ? topSongs : topSongs.take(5).toList();
 
+    // Play starts with the top songs; with shuffle on, it mixes the whole
+    // discography.
+    Future<void> play(bool shuffle) => topSongs.isNotEmpty && (!shuffle || albums.isEmpty)
+        ? player.playSongs(topSongs, shuffle: shuffle)
+        : _playAll(albums, (songs) => player.playSongs(songs, shuffle: shuffle));
+
     return DetailPage(
-      cover: CoverArt(id: artist.coverArt, seed: artist.id, circle: true, icon: Icons.person_rounded),
+      cover: CoverArt(id: artist.coverArt, seed: artist.id, circle: true, icon: LucideIcons.user),
       kicker: 'Artist',
       title: artist.name,
       meta: joinDot([plural(albums.length, 'album'), if (topSongs.isNotEmpty) 'Top songs available']),
-      onPlay: topSongs.isNotEmpty
-          ? () => guarded(context, () => player.playSongs(topSongs))
-          : _fetchingSongs || albums.isEmpty
-          ? null
-          : () => _playAll(albums, player.playSongs),
-      onShuffle: _fetchingSongs || albums.isEmpty
-          ? null
-          : () => _playAll(albums, (songs) => player.playSongs(songs, shuffle: true)),
-      actions: [FavoriteButton(id: artist.id, kind: FavoriteKind.artist, size: 26)],
+      onPlay: _fetchingSongs || (topSongs.isEmpty && albums.isEmpty) ? null : play,
+      actions: [FavoriteButton(id: artist.id, kind: FavoriteKind.artist)],
       slivers: [
         if (info.biography != null)
           SliverPadding(

@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,7 @@ import '../../audio/player_controller.dart';
 import '../../state/session.dart';
 import '../actions.dart';
 import '../navigation.dart';
+import '../theme.dart';
 import '../widgets/async_view.dart';
 import '../widgets/layout.dart';
 import '../widgets/media_cards.dart';
@@ -71,7 +73,7 @@ class HomeScreen extends StatelessWidget {
                       IconButton(
                         tooltip: 'Settings',
                         onPressed: () => context.read<NavController>().push(const SettingsScreen()),
-                        icon: const Icon(Icons.settings_outlined),
+                        icon: const Icon(LucideIcons.settings),
                       ),
                     ],
                   ),
@@ -83,7 +85,7 @@ class HomeScreen extends StatelessWidget {
                     runSpacing: 10,
                     children: [
                       _QuickAction(
-                        icon: Icons.shuffle_rounded,
+                        icon: LucideIcons.shuffle,
                         label: 'Shuffle library',
                         onTap: () => guarded(context, () async {
                           final songs = await session.client.getRandomSongs(
@@ -94,13 +96,13 @@ class HomeScreen extends StatelessWidget {
                         }),
                       ),
                       _QuickAction(
-                        icon: Icons.favorite_rounded,
+                        icon: LucideIcons.star,
                         label: 'Shuffle favorites',
                         onTap: () => guarded(context, () async {
                           final starred = await session.client.getStarred(musicFolderId: session.libraryId);
                           if (starred.songs.isEmpty) {
                             if (context.mounted) {
-                              toast(context, 'No favorite songs yet — tap the heart on a song to add one.');
+                              toast(context, 'No favorite songs yet — tap the star on a song to add one.');
                             }
                             return;
                           }
@@ -117,7 +119,7 @@ class HomeScreen extends StatelessWidget {
                 if (data.random.isNotEmpty) _albumShelf('Rediscover', data.random),
                 if (data.newest.isEmpty)
                   const EmptyState(
-                    icon: Icons.library_music_outlined,
+                    icon: LucideIcons.libraryBig,
                     title: 'Your library is empty',
                     message: 'Add music to your Navidrome server and it will show up here.',
                   ),
@@ -160,7 +162,7 @@ class _QuickAction extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 20, color: scheme.primary),
+              Icon(icon, size: IconSizes.medium, color: scheme.primary),
               const SizedBox(width: 10),
               Text(label, style: Theme.of(context).textTheme.labelLarge),
             ],

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -15,12 +16,16 @@ import 'screens/artist_detail_screen.dart';
 import 'screens/favorite_songs_screen.dart';
 import 'screens/playlist_detail_screen.dart';
 import 'theme.dart';
+import 'widgets/popup_menu.dart';
 
 class MenuAction {
   const MenuAction(this.label, this.icon, this.onSelected);
 
   final String label;
-  final IconData icon;
+
+  /// Leaves an empty slot in a popup menu when null, e.g. for the unchecked
+  /// choices of a select.
+  final IconData? icon;
   final VoidCallback onSelected;
 }
 
@@ -61,34 +66,18 @@ Future<void> guarded(BuildContext context, Future<void> Function() action, {Stri
   }
 }
 
-/// Shows [actions] as a popup menu at [globalPosition] in the wide layout, or
-/// as a sheet sliding up from the bottom on phones, and runs the one picked.
-Future<void> showActionMenu(BuildContext context, Offset globalPosition, List<MenuAction> actions) async {
-  final selected = isWide(context)
-      ? await _showPopupMenu(context, globalPosition, actions)
-      : await _showActionSheet(context, actions);
+/// Shows [actions] as a popup menu next to [anchor] (global coordinates) in
+/// the wide layout, or as a sheet sliding up from the bottom on phones, and
+/// runs the one picked.
+Future<void> showActionMenu(BuildContext context, Rect anchor, List<MenuAction> actions) async {
+  final selected = await pickMenuAction(context, anchor, actions);
   selected?.onSelected();
 }
 
-Future<MenuAction?> _showPopupMenu(BuildContext context, Offset globalPosition, List<MenuAction> actions) {
-  // The menu is laid out in its navigator's overlay. Inside a section's nested
-  // navigator that overlay doesn't start at the window origin (the sidebar sits
-  // to its left), so the global position has to be made local to it.
-  final overlay = Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
-  final local = overlay.globalToLocal(globalPosition);
-  return showMenu<MenuAction>(
-    context: context,
-    position: RelativeRect.fromRect(local & const Size(1, 1), Offset.zero & overlay.size),
-    items: [
-      for (final a in actions)
-        PopupMenuItem(
-          value: a,
-          height: 42,
-          child: Row(children: [Icon(a.icon, size: 20), const SizedBox(width: 14), Text(a.label)]),
-        ),
-    ],
-  );
-}
+/// Shows [actions] like [showActionMenu] and returns the one picked without
+/// running it. For selects, which mark the current choice with a check.
+Future<MenuAction?> pickMenuAction(BuildContext context, Rect anchor, List<MenuAction> actions) =>
+    isWide(context) ? showPopupMenu(context, anchor, actions) : _showActionSheet(context, actions);
 
 /// On the root navigator, so the sheet covers the tab bar and mini player
 /// rather than sliding up inside the current section.
@@ -98,34 +87,45 @@ Future<MenuAction?> _showActionSheet(BuildContext context, List<MenuAction> acti
       useRootNavigator: true,
       showDragHandle: true,
       isScrollControlled: true,
-      builder: (context) => ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
-        child: ListView(
-          shrinkWrap: true,
-          padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + MediaQuery.paddingOf(context).bottom),
-          children: [
-            for (final a in actions)
-              ListTile(leading: Icon(a.icon), title: Text(a.label), onTap: () => Navigator.pop(context, a)),
-          ],
-        ),
-      ),
+      builder: (context) {
+        // As in the popup, actions without an icon keep an empty slot when
+        // others have one, so a select's labels stay aligned with its check.
+        final slot = actions.any((a) => a.icon != null) ? const SizedBox(width: 24) : null;
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.7),
+          child: ListView(
+            shrinkWrap: true,
+            padding: EdgeInsets.fromLTRB(12, 0, 12, 12 + MediaQuery.paddingOf(context).bottom),
+            children: [
+              for (final a in actions)
+                ListTile(
+                  leading: a.icon == null ? slot : Icon(a.icon),
+                  title: Text(a.label),
+                  onTap: () => Navigator.pop(context, a),
+                ),
+            ],
+          ),
+        );
+      },
     );
 
 /// "⋯" button that opens [actions] next to itself.
 class MoreButton extends StatelessWidget {
-  const MoreButton({super.key, required this.actions, this.icon = Icons.more_horiz_rounded});
+  const MoreButton({super.key, required this.actions, this.icon = LucideIcons.ellipsis, this.size, this.color});
 
   final List<MenuAction> Function() actions;
   final IconData icon;
 
+  /// `null` takes the ambient [IconButtonTheme]'s size.
+  final double? size;
+  final Color? color;
+
   @override
   Widget build(BuildContext context) => IconButton(
     tooltip: 'More',
-    icon: Icon(icon),
-    onPressed: () {
-      final box = context.findRenderObject()! as RenderBox;
-      unawaited(showActionMenu(context, box.localToGlobal(box.size.bottomLeft(Offset.zero)), actions()));
-    },
+    iconSize: size,
+    icon: Icon(icon, color: color),
+    onPressed: () => unawaited(showActionMenu(context, globalRect(context), actions())),
   );
 }
 
@@ -139,8 +139,8 @@ class ContextMenuRegion extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
     behavior: HitTestBehavior.opaque,
-    onSecondaryTapUp: (d) => showActionMenu(context, d.globalPosition, actions()),
-    onLongPressStart: (d) => showActionMenu(context, d.globalPosition, actions()),
+    onSecondaryTapUp: (d) => showActionMenu(context, d.globalPosition & Size.zero, actions()),
+    onLongPressStart: (d) => showActionMenu(context, d.globalPosition & Size.zero, actions()),
     child: child,
   );
 }
@@ -150,7 +150,7 @@ MenuAction _favoriteAction(BuildContext context, String id, FavoriteKind kind) {
   final isFav = favs.isFavorite(id);
   return MenuAction(
     isFav ? 'Remove from favorites' : 'Add to favorites',
-    isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+    isFav ? LucideIcons.starOff : LucideIcons.star,
     () => guarded(context, () => favs.toggle(id, kind)),
   );
 }
@@ -160,19 +160,18 @@ List<MenuAction> songActions(BuildContext context, Song song, {List<MenuAction> 
   return [
     MenuAction(
       'Play next',
-      Icons.playlist_play_rounded,
+      LucideIcons.listStart,
       () => guarded(context, () => player.playNext([song]), success: 'Playing next'),
     ),
     MenuAction(
       'Add to queue',
-      Icons.add_to_queue_rounded,
+      LucideIcons.listEnd,
       () => guarded(context, () => player.addToQueue([song]), success: 'Added to queue'),
     ),
-    MenuAction('Add to playlist…', Icons.playlist_add_rounded, () => showAddToPlaylist(context, [song.id])),
+    MenuAction('Add to playlist…', LucideIcons.listPlus, () => showAddToPlaylist(context, [song.id])),
     _favoriteAction(context, song.id, FavoriteKind.song),
-    if (song.albumId != null) MenuAction('Go to album', Icons.album_rounded, () => openAlbum(context, song.albumId!)),
-    if (song.artistId != null)
-      MenuAction('Go to artist', Icons.person_rounded, () => openArtist(context, song.artistId!)),
+    if (song.albumId != null) MenuAction('Go to album', LucideIcons.disc3, () => openAlbum(context, song.albumId!)),
+    if (song.artistId != null) MenuAction('Go to artist', LucideIcons.user, () => openArtist(context, song.artistId!)),
     ...extra,
   ];
 }
@@ -187,14 +186,14 @@ List<MenuAction> albumActions(BuildContext context, Album album, {bool includePl
       guarded(context, () async => f(await songs()), success: done);
   return [
     if (includePlay) ...[
-      MenuAction('Play', Icons.play_arrow_rounded, () => run(player.playSongs)),
-      MenuAction('Shuffle', Icons.shuffle_rounded, () => run((s) => player.playSongs(s, shuffle: true))),
+      MenuAction('Play', LucideIcons.play, () => run(player.playSongs)),
+      MenuAction('Shuffle', LucideIcons.shuffle, () => run((s) => player.playSongs(s, shuffle: true))),
     ],
-    MenuAction('Play next', Icons.playlist_play_rounded, () => run(player.playNext, 'Playing next')),
-    MenuAction('Add to queue', Icons.add_to_queue_rounded, () => run(player.addToQueue, 'Added to queue')),
+    MenuAction('Play next', LucideIcons.listStart, () => run(player.playNext, 'Playing next')),
+    MenuAction('Add to queue', LucideIcons.listEnd, () => run(player.addToQueue, 'Added to queue')),
     MenuAction(
       'Add to playlist…',
-      Icons.playlist_add_rounded,
+      LucideIcons.listPlus,
       () => guarded(context, () async {
         final list = await songs();
         if (context.mounted) await showAddToPlaylist(context, [for (final s in list) s.id]);
@@ -202,12 +201,12 @@ List<MenuAction> albumActions(BuildContext context, Album album, {bool includePl
     ),
     _favoriteAction(context, album.id, FavoriteKind.album),
     if (album.artistId != null)
-      MenuAction('Go to artist', Icons.person_rounded, () => openArtist(context, album.artistId!)),
+      MenuAction('Go to artist', LucideIcons.user, () => openArtist(context, album.artistId!)),
   ];
 }
 
 List<MenuAction> artistActions(BuildContext context, Artist artist) => [
-  MenuAction('Open', Icons.person_rounded, () => openArtist(context, artist.id)),
+  MenuAction('Open', LucideIcons.user, () => openArtist(context, artist.id)),
   _favoriteAction(context, artist.id, FavoriteKind.artist),
 ];
 
@@ -266,7 +265,7 @@ Future<void> showAddToPlaylist(BuildContext context, List<String> songIds) async
                 child: Text('Add to playlist', style: Theme.of(context).textTheme.titleLarge),
               ),
               ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.add_rounded)),
+                leading: const CircleAvatar(child: Icon(LucideIcons.plus)),
                 title: const Text('New playlist'),
                 onTap: () => Navigator.pop(context, true),
               ),
@@ -277,13 +276,13 @@ Future<void> showAddToPlaylist(BuildContext context, List<String> songIds) async
                 )
               else if (snap.hasError)
                 ListTile(
-                  leading: Icon(Icons.cloud_off_rounded, color: Theme.of(context).colorScheme.error),
+                  leading: Icon(LucideIcons.cloudOff, color: Theme.of(context).colorScheme.error),
                   title: const Text('Couldn’t load your playlists'),
                   subtitle: Text('${snap.error}'),
                 ),
               for (final p in lists)
                 ListTile(
-                  leading: const CircleAvatar(child: Icon(Icons.queue_music_rounded)),
+                  leading: const CircleAvatar(child: Icon(LucideIcons.listMusic)),
                   title: Text(p.name),
                   subtitle: Text(plural(p.songCount, 'song')),
                   onTap: () => Navigator.pop(context, p),

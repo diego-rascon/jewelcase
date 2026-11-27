@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -21,7 +22,7 @@ class FavoriteSongsScreen extends StatefulWidget {
 
   /// Placeholder art shared with the playlist card and sidebar entry.
   static Widget cover({double radius = 12}) =>
-      CoverArt(id: null, seed: 'favorites', radius: radius, icon: Icons.favorite_rounded);
+      CoverArt(id: null, seed: 'favorites', radius: radius, icon: LucideIcons.star);
 
   @override
   State<FavoriteSongsScreen> createState() => _FavoriteSongsScreenState();
@@ -41,7 +42,7 @@ class _FavoriteSongsScreenState extends State<FavoriteSongsScreen> {
       frame: AsyncView.page,
       deps: [libraryId],
       load: () async {
-        // The heart state covers all libraries; the list only the selected
+        // The starred state covers all libraries; the list only the selected
         // one, which needs its own request.
         final all = favorites.refresh();
         if (libraryId == null) return (await all).songs;
@@ -49,7 +50,7 @@ class _FavoriteSongsScreenState extends State<FavoriteSongsScreen> {
         return starred.songs;
       },
       builder: (context, songs, reload) {
-        // Hide songs un-hearted since the list was loaded.
+        // Hide songs unstarred since the list was loaded.
         final favs = context.watch<FavoritesController>();
         final starred = songs.where((s) => favs.isFavorite(s.id)).toList();
         // Phones show no column header, so they keep the playlist's order.
@@ -61,27 +62,24 @@ class _FavoriteSongsScreenState extends State<FavoriteSongsScreen> {
           cover: FavoriteSongsScreen.cover(),
           title: FavoriteSongsScreen.title,
           meta: joinDot([plural(visible.length, 'song'), formatLongDuration(total)]),
-          onPlay: visible.isEmpty ? null : () => player.playSongs(visible),
-          onShuffle: visible.isEmpty ? null : () => player.playSongs(visible, shuffle: true),
-          actions: [
-            MoreButton(
-              actions: () => [
-                MenuAction(
-                  'Add to queue',
-                  Icons.add_to_queue_rounded,
-                  () => guarded(context, () => player.addToQueue(visible), success: 'Added to queue'),
-                ),
-                MenuAction('Refresh', Icons.refresh_rounded, () => guarded(context, reload)),
-              ],
-            ),
-          ],
+          onPlay: visible.isEmpty ? null : (shuffle) => player.playSongs(visible, shuffle: shuffle),
+          menu: MoreButton(
+            actions: () => [
+              MenuAction(
+                'Add to queue',
+                LucideIcons.listEnd,
+                () => guarded(context, () => player.addToQueue(visible), success: 'Added to queue'),
+              ),
+              MenuAction('Refresh', LucideIcons.refreshCw, () => guarded(context, reload)),
+            ],
+          ),
           slivers: [
             if (visible.isEmpty)
               const SliverToBoxAdapter(
                 child: EmptyState(
-                  icon: Icons.favorite_border_rounded,
+                  icon: LucideIcons.star,
                   title: 'No favorite songs yet',
-                  message: 'Tap the heart on any song to save it here.',
+                  message: 'Tap the star on any song to save it here.',
                 ),
               )
             else if (wide)

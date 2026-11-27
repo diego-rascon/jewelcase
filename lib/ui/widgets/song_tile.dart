@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -10,13 +11,16 @@ import '../actions.dart';
 import '../format.dart';
 import '../theme.dart';
 import 'cover_art.dart';
+import 'filled_icon.dart';
 
 class FavoriteButton extends StatelessWidget {
-  const FavoriteButton({super.key, required this.id, required this.kind, this.size = 22, this.color});
+  const FavoriteButton({super.key, required this.id, required this.kind, this.size, this.color});
 
   final String id;
   final FavoriteKind kind;
-  final double size;
+
+  /// `null` takes the ambient [IconButtonTheme]'s size.
+  final double? size;
   final Color? color;
 
   @override
@@ -30,11 +34,7 @@ class FavoriteButton extends StatelessWidget {
       icon: AnimatedSwitcher(
         duration: const Duration(milliseconds: 200),
         transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-        child: Icon(
-          isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-          key: ValueKey(isFav),
-          color: isFav ? scheme.primary : color,
-        ),
+        child: FilledIcon(FilledIcons.star, filled: isFav, key: ValueKey(isFav), color: isFav ? scheme.primary : color),
       ),
     );
   }
@@ -159,9 +159,9 @@ class SongListHeader extends StatelessWidget {
     Widget column(String label, SongSortField field, {IconData? icon, bool end = false}) =>
         _SortButton(label: label, icon: icon, field: field, sort: sort, onSort: onSort, end: end);
     // Invisible stand-ins that take the same space as the rows' buttons.
-    Widget placeholder(IconData icon, {double? size}) => Visibility.maintain(
+    Widget placeholder(IconData icon) => Visibility.maintain(
       visible: false,
-      child: IconButton(iconSize: size, onPressed: null, icon: Icon(icon)),
+      child: IconButton(iconSize: IconSizes.small, onPressed: null, icon: Icon(icon)),
     );
 
     final wide = isWide(context);
@@ -183,12 +183,12 @@ class SongListHeader extends StatelessWidget {
               ),
         artist: start(column('Artist', SongSortField.artist)),
         album: showAlbum ? start(column('Album', SongSortField.album)) : null,
-        favorite: placeholder(Icons.favorite_border_rounded, size: 18),
+        favorite: placeholder(LucideIcons.star),
         duration: Align(
           alignment: Alignment.centerRight,
-          child: column('Duration', SongSortField.duration, icon: Icons.schedule_rounded, end: true),
+          child: column('Duration', SongSortField.duration, icon: LucideIcons.clock, end: true),
         ),
-        more: placeholder(Icons.more_horiz_rounded),
+        more: placeholder(LucideIcons.ellipsis),
       ),
     );
   }
@@ -228,7 +228,7 @@ class _SortButton extends StatelessWidget {
     final active = sort?.field == field;
     final color = active ? scheme.onSurface : scheme.onSurfaceVariant;
     final arrow = active
-        ? Icon(sort!.descending ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 14, color: color)
+        ? Icon(sort!.descending ? LucideIcons.arrowDown : LucideIcons.arrowUp, size: 14, color: color)
         : null;
     final content = icon != null
         ? Icon(icon, size: 16, color: color)
@@ -366,29 +366,15 @@ class _SongTileState extends State<SongTile> {
 
     Widget leading;
     if (widget.showCover) {
-      leading = SizedBox(
-        width: 44,
-        child: Stack(
-          children: [
-            CoverArt(id: song.coverArt, seed: song.albumId, radius: 6),
-            if (isCurrent)
-              Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
-                  child: Icon(Icons.graphic_eq_rounded, color: scheme.primary),
-                ),
-              ),
-          ],
-        ),
-      );
+      leading = SongCover(song: song, current: isCurrent, hovered: _hover);
     } else {
       leading = SizedBox(
         width: 32,
         child: Center(
           child: isCurrent
-              ? Icon(Icons.graphic_eq_rounded, color: scheme.primary, size: 20)
+              ? Icon(LucideIcons.audioLines, color: scheme.primary, size: IconSizes.medium)
               : _hover
-              ? const Icon(Icons.play_arrow_rounded, size: 20)
+              ? const FilledIcon(FilledIcons.play, size: IconSizes.medium)
               : Text('${widget.number ?? song.track ?? ''}', style: muted),
         ),
       );
@@ -438,16 +424,52 @@ class _SongTileState extends State<SongTile> {
                         : null,
                     favorite: Opacity(
                       opacity: _hover || isFav ? 1 : 0,
-                      child: FavoriteButton(id: song.id, kind: FavoriteKind.song, size: 18),
+                      child: FavoriteButton(id: song.id, kind: FavoriteKind.song, size: IconSizes.small),
                     ),
                     duration: Text(formatDuration(song.duration), style: muted, textAlign: TextAlign.right),
-                    more: MoreButton(actions: actions),
+                    more: MoreButton(actions: actions, size: IconSizes.small),
                   ),
                 ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A song's cover at the start of a list row. Marks the current song, and
+/// shows a play icon while the row is [hovered], as a hint that a click plays it.
+class SongCover extends StatelessWidget {
+  const SongCover({super.key, required this.song, this.current = false, this.hovered = false});
+
+  final Song song;
+  final bool current;
+  final bool hovered;
+
+  static const _radius = BorderRadius.all(Radius.circular(6));
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = current
+        ? Icon(LucideIcons.audioLines, color: Theme.of(context).colorScheme.primary)
+        : hovered
+        ? const FilledIcon(FilledIcons.play, color: Colors.white)
+        : null;
+    return SizedBox(
+      width: 44,
+      child: Stack(
+        children: [
+          CoverArt(id: song.coverArt, seed: song.albumId, radius: _radius.topLeft.x),
+          if (icon != null)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(color: Colors.black54, borderRadius: _radius),
+                child: icon,
+              ),
+            ),
+        ],
       ),
     );
   }

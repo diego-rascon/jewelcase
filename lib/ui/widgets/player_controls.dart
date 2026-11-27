@@ -1,19 +1,22 @@
 import 'dart:async';
 
 import 'package:just_audio/just_audio.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 import '../../audio/player_controller.dart';
 import '../actions.dart';
 import '../format.dart';
+import '../theme.dart';
+import 'filled_icon.dart';
+import 'thin_slider.dart';
 
-/// Seek bar with elapsed / remaining labels. Holds the drag position locally
-/// so the thumb doesn't jump while scrubbing.
+/// Seek bar with elapsed / remaining labels. While scrubbing, the labels
+/// follow the drag rather than the playing position.
 class SeekBar extends StatefulWidget {
-  const SeekBar({super.key, this.compact = false, this.color});
+  const SeekBar({super.key, this.color});
 
-  final bool compact;
   final Color? color;
 
   @override
@@ -21,7 +24,8 @@ class SeekBar extends StatefulWidget {
 }
 
 class _SeekBarState extends State<SeekBar> {
-  double? _dragValue;
+  /// Where the drag would seek to.
+  Duration? _drag;
 
   @override
   Widget build(BuildContext context) {
@@ -40,52 +44,28 @@ class _SeekBarState extends State<SeekBar> {
         stream: player.position,
         builder: (context, snap) {
           final pos = snap.data ?? Duration.zero;
-          final max = total.inMilliseconds.toDouble().clamp(1.0, double.infinity);
-          final value = (_dragValue ?? pos.inMilliseconds.toDouble()).clamp(0.0, max);
-          final shown = Duration(milliseconds: value.round());
-
-          final slider = SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: widget.color,
-              thumbColor: widget.color,
-              inactiveTrackColor: widget.color?.withValues(alpha: 0.2),
-            ),
-            child: Slider(
-              value: value,
-              max: max,
-              onChanged: (v) => setState(() => _dragValue = v),
-              onChangeEnd: (v) {
-                unawaited(guarded(context, () => player.seek(Duration(milliseconds: v.round()))));
-                setState(() => _dragValue = null);
-              },
-            ),
-          );
-
-          if (widget.compact) {
-            return Row(
-              children: [
-                SizedBox(
-                  width: 44,
-                  child: Text(formatDuration(shown), style: labelStyle, textAlign: TextAlign.right),
-                ),
-                Expanded(child: slider),
-                SizedBox(width: 44, child: Text(formatDuration(total), style: labelStyle)),
-              ],
-            );
-          }
+          final shown = _drag ?? (pos > total ? total : pos);
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              slider,
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Row(
-                  children: [
-                    Text(formatDuration(shown), style: labelStyle),
-                    const Spacer(),
-                    Text('-${formatDuration(total - shown)}', style: labelStyle),
-                  ],
-                ),
+              ThinSlider(
+                value: total == Duration.zero ? 0 : pos.inMilliseconds / total.inMilliseconds,
+                color: widget.color,
+                thickness: largeSliderThickness,
+                activeThickness: largeSliderActiveThickness,
+                hitHeight: largeSliderHitHeight,
+                onChanged: (f) => setState(() => _drag = total * f),
+                onChangeEnd: (f) {
+                  setState(() => _drag = null);
+                  unawaited(guarded(context, () => player.seek(total * f)));
+                },
+              ),
+              Row(
+                children: [
+                  Text(formatDuration(shown), style: labelStyle),
+                  const Spacer(),
+                  Text('-${formatDuration(total - shown)}', style: labelStyle),
+                ],
               ),
             ],
           );
@@ -95,13 +75,29 @@ class _SeekBarState extends State<SeekBar> {
   }
 }
 
+/// The [ThinSlider] sizes for Now Playing's seek and volume bars, bolder than
+/// the player bars' progress line.
+const largeSliderThickness = 4.0;
+const largeSliderActiveThickness = 8.0;
+const largeSliderHitHeight = 28.0;
+
 /// Shuffle · previous · play/pause · next · repeat.
 class TransportControls extends StatelessWidget {
-  const TransportControls({super.key, this.size = 1, this.color, this.showModes = true});
+  const TransportControls({super.key, this.uniform = false, this.color, this.showModes = true, this.spread = false});
 
-  final double size;
+  /// Every button the same size, the ambient [IconButtonTheme]'s, side by
+  /// side with no extra gaps (the player bars). Otherwise they're Now
+  /// Playing's: previous, play/pause and next at [IconSizes.xlarge] with gaps
+  /// between them, shuffle and repeat at [IconSizes.large].
+  final bool uniform;
+
+  /// The buttons' color. Shuffle and repeat take the theme's primary while
+  /// on: white in the app's neutral theme, the art's color in Now Playing.
   final Color? color;
   final bool showModes;
+
+  /// Fill the available width, with shuffle and repeat pushed to the edges.
+  final bool spread;
 
   @override
   Widget build(BuildContext context) {
@@ -111,59 +107,64 @@ class TransportControls extends StatelessWidget {
     );
     final scheme = Theme.of(context).colorScheme;
     final fg = color ?? scheme.onSurface;
-    final active = color ?? scheme.primary;
+    final active = scheme.primary;
 
+    final transportSize = uniform ? null : IconSizes.xlarge;
+    final modeSize = uniform ? null : IconSizes.large;
+    final gap = uniform ? null : const SizedBox(width: 20);
+    final skipButtons = [
+      IconButton(
+        tooltip: 'Previous',
+        iconSize: transportSize,
+        color: fg,
+        onPressed: hasQueue ? p.previous : null,
+        icon: const FilledIcon(FilledIcons.skipBack),
+      ),
+      ?gap,
+      _PlayButton(iconSize: transportSize, color: fg),
+      ?gap,
+      IconButton(
+        tooltip: 'Next',
+        iconSize: transportSize,
+        color: fg,
+        onPressed: hasQueue ? p.next : null,
+        icon: const FilledIcon(FilledIcons.skipForward),
+      ),
+    ];
+    if (!showModes) return Row(mainAxisSize: MainAxisSize.min, children: skipButtons);
+
+    final shuffleButton = IconButton(
+      tooltip: 'Shuffle',
+      iconSize: modeSize,
+      color: shuffle ? active : fg.withValues(alpha: 0.6),
+      onPressed: () => unawaited(guarded(context, p.toggleShuffle)),
+      icon: ModeIcon(icon: LucideIcons.shuffle, on: shuffle, color: active),
+    );
+    final repeatButton = IconButton(
+      tooltip: switch (loopMode) {
+        LoopMode.off => 'Repeat',
+        LoopMode.all => 'Repeat all',
+        LoopMode.one => 'Repeat one',
+      },
+      iconSize: modeSize,
+      color: loopMode == LoopMode.off ? fg.withValues(alpha: 0.6) : active,
+      onPressed: p.cycleLoopMode,
+      icon: ModeIcon(
+        icon: loopMode == LoopMode.one ? LucideIcons.repeat1 : LucideIcons.repeat,
+        on: loopMode != LoopMode.off,
+        color: active,
+      ),
+    );
     return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showModes)
-          IconButton(
-            tooltip: 'Shuffle',
-            iconSize: 22 * size,
-            color: shuffle ? active : fg.withValues(alpha: 0.6),
-            onPressed: p.toggleShuffle,
-            icon: _ModeIcon(icon: Icons.shuffle_rounded, on: shuffle, color: active),
-          ),
-        IconButton(
-          tooltip: 'Previous',
-          iconSize: 32 * size,
-          color: fg,
-          onPressed: hasQueue ? p.previous : null,
-          icon: const Icon(Icons.skip_previous_rounded),
-        ),
-        SizedBox(width: 8 * size),
-        _PlayButton(size: size, color: fg),
-        SizedBox(width: 8 * size),
-        IconButton(
-          tooltip: 'Next',
-          iconSize: 32 * size,
-          color: fg,
-          onPressed: hasQueue ? p.next : null,
-          icon: const Icon(Icons.skip_next_rounded),
-        ),
-        if (showModes)
-          IconButton(
-            tooltip: switch (loopMode) {
-              LoopMode.off => 'Repeat',
-              LoopMode.all => 'Repeat all',
-              LoopMode.one => 'Repeat one',
-            },
-            iconSize: 22 * size,
-            color: loopMode == LoopMode.off ? fg.withValues(alpha: 0.6) : active,
-            onPressed: p.cycleLoopMode,
-            icon: _ModeIcon(
-              icon: loopMode == LoopMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-              on: loopMode != LoopMode.off,
-              color: active,
-            ),
-          ),
-      ],
+      mainAxisSize: spread ? MainAxisSize.max : MainAxisSize.min,
+      children: [shuffleButton, if (spread) const Spacer(), ...skipButtons, if (spread) const Spacer(), repeatButton],
     );
   }
 }
 
-class _ModeIcon extends StatelessWidget {
-  const _ModeIcon({required this.icon, required this.on, required this.color});
+/// A mode's icon (shuffle, repeat), with a dot below it while the mode is on.
+class ModeIcon extends StatelessWidget {
+  const ModeIcon({super.key, required this.icon, required this.on, required this.color});
 
   final IconData icon;
   final bool on;
@@ -194,9 +195,10 @@ class _ModeIcon extends StatelessWidget {
 }
 
 class _PlayButton extends StatelessWidget {
-  const _PlayButton({required this.size, required this.color});
+  const _PlayButton({required this.iconSize, required this.color});
 
-  final double size;
+  /// `null` takes the ambient [IconButtonTheme]'s size.
+  final double? iconSize;
   final Color color;
 
   @override
@@ -205,35 +207,29 @@ class _PlayButton extends StatelessWidget {
     final (playing, buffering, hasQueue) = context.select<PlayerController, (bool, bool, bool)>(
       (p) => (p.playing, p.buffering, p.hasQueue),
     );
-    final dim = 48.0 * size;
-    final bg = color;
-    final fg = ThemeData.estimateBrightnessForColor(bg) == Brightness.dark ? Colors.white : Colors.black;
-    return SizedBox.square(
-      dimension: dim,
-      child: Material(
-        color: bg,
-        shape: const CircleBorder(),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: hasQueue ? p.togglePlay : null,
-          child: Center(
-            child: buffering && playing
-                ? SizedBox.square(
-                    dimension: dim * 0.4,
-                    child: CircularProgressIndicator(strokeWidth: 2.5, color: fg),
-                  )
-                : AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 150),
-                    child: Icon(
-                      playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      key: ValueKey(playing),
-                      size: dim * 0.6,
-                      color: fg,
-                    ),
+    return IconButton(
+      tooltip: playing ? 'Pause' : 'Play',
+      iconSize: iconSize,
+      color: color,
+      onPressed: hasQueue ? p.togglePlay : null,
+      icon: buffering && playing
+          // Sized like the icon it replaces, which IconButton passes down.
+          ? Builder(
+              builder: (context) {
+                final s = IconTheme.of(context).size ?? 24;
+                return SizedBox.square(
+                  dimension: s,
+                  child: Padding(
+                    padding: EdgeInsets.all(s * 0.2),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: color),
                   ),
-          ),
-        ),
-      ),
+                );
+              },
+            )
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 150),
+              child: FilledIcon(playing ? FilledIcons.pause : FilledIcons.play, key: ValueKey(playing)),
+            ),
     );
   }
 }
@@ -253,21 +249,61 @@ class VolumeControl extends StatelessWidget {
       children: [
         IconButton(
           tooltip: v == 0 ? 'Unmute' : 'Mute',
-          iconSize: 20,
           onPressed: () => p.setVolume(v == 0 ? 1 : 0),
           icon: Icon(
             v == 0
-                ? Icons.volume_off_rounded
+                ? LucideIcons.volumeX
                 : v < 0.5
-                ? Icons.volume_down_rounded
-                : Icons.volume_up_rounded,
+                ? LucideIcons.volume1
+                : LucideIcons.volume2,
           ),
         ),
         if (width != null)
           SizedBox(
             width: width,
-            child: Slider(value: v, onChanged: p.setVolume),
+            child: ThinSlider(value: v, onChanged: p.setVolume, onChangeEnd: p.setVolume),
           ),
+      ],
+    );
+  }
+}
+
+/// Full-width volume slider between a mute button and a loudspeaker icon.
+class VolumeBar extends StatelessWidget {
+  const VolumeBar({super.key, this.color});
+
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.read<PlayerController>();
+    final v = context.select<PlayerController, double>((p) => p.volume);
+    final fg = (color ?? Theme.of(context).colorScheme.onSurface).withValues(alpha: 0.65);
+    return Row(
+      children: [
+        IconButton(
+          tooltip: v == 0 ? 'Unmute' : 'Mute',
+          iconSize: IconSizes.large,
+          color: fg,
+          onPressed: () => p.setVolume(v == 0 ? 1 : 0),
+          icon: Icon(v == 0 ? LucideIcons.volumeX : LucideIcons.volume),
+        ),
+        Expanded(
+          child: ThinSlider(
+            value: v,
+            color: color,
+            thickness: largeSliderThickness,
+            activeThickness: largeSliderActiveThickness,
+            hitHeight: largeSliderHitHeight,
+            onChanged: p.setVolume,
+            onChangeEnd: p.setVolume,
+          ),
+        ),
+        // Matches the mute button's width, so the slider sits centered.
+        SizedBox(
+          width: 40,
+          child: Icon(LucideIcons.volume2, size: IconSizes.large, color: fg),
+        ),
       ],
     );
   }

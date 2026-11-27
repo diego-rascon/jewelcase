@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,9 +8,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../api/models.dart';
 import '../../state/favorites.dart';
 import '../../state/session.dart';
+import '../actions.dart';
+import '../theme.dart';
 import '../widgets/async_view.dart';
 import '../widgets/layout.dart';
 import '../widgets/media_cards.dart';
+import '../widgets/popup_menu.dart';
 
 /// All albums, sortable, loaded page by page as you scroll. The favorites
 /// filter loads every starred album at once and sorts them locally, since
@@ -126,6 +130,13 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
     }
   }
 
+  Future<void> _pickSort(BuildContext anchor) async {
+    final picked = await pickMenuAction(anchor, globalRect(anchor), [
+      for (final s in _sorts) MenuAction(s.label, s == _sort ? LucideIcons.check : null, () => _setSort(s)),
+    ]);
+    if (mounted) picked?.onSelected();
+  }
+
   void _setSort(AlbumSort sort) {
     if (sort == _sort) return;
     unawaited(_saveSort(sort));
@@ -144,7 +155,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
   Widget build(BuildContext context) {
     final pad = pagePadding(context);
     final theme = Theme.of(context);
-    // Hide albums un-hearted since the favorites were loaded.
+    // Hide albums unstarred since the favorites were loaded.
     final favorites = _favoritesOnly ? context.watch<FavoritesController>() : null;
     final albums = favorites == null ? _albums : _albums.where((a) => favorites.isFavorite(a.id)).toList();
     return Scaffold(
@@ -172,29 +183,19 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          MenuAnchor(
-                            alignmentOffset: const Offset(0, 6),
-                            menuChildren: [
-                              for (final s in _sorts)
-                                MenuItemButton(
-                                  leadingIcon: SizedBox.square(
-                                    dimension: 20,
-                                    child: s == _sort
-                                        ? Icon(Icons.check_rounded, size: 20, color: theme.colorScheme.primary)
-                                        : null,
-                                  ),
-                                  onPressed: () => _setSort(s),
-                                  child: Text(s.label),
-                                ),
-                            ],
-                            builder: (context, menu, _) => ActionChip(
+                          Builder(
+                            builder: (context) => ActionChip(
                               tooltip: 'Sort by',
-                              avatar: const Icon(Icons.sort_rounded),
+                              avatar: const Icon(LucideIcons.arrowDownWideNarrow),
                               label: Row(
                                 mainAxisSize: MainAxisSize.min,
-                                children: [Text(_sort.label), const Icon(Icons.arrow_drop_down_rounded, size: 20)],
+                                children: [
+                                  Text(_sort.label),
+                                  const SizedBox(width: 4),
+                                  const Icon(LucideIcons.chevronDown, size: IconSizes.small),
+                                ],
                               ),
-                              onPressed: () => menu.isOpen ? menu.close() : menu.open(),
+                              onPressed: () => unawaited(_pickSort(context)),
                             ),
                           ),
                           FavoritesFilterChip(selected: _favoritesOnly, onSelected: _setFavoritesOnly),
@@ -214,11 +215,11 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
                   hasScrollBody: false,
                   child: _favoritesOnly
                       ? const EmptyState(
-                          icon: Icons.favorite_border_rounded,
+                          icon: LucideIcons.star,
                           title: 'No favorite albums',
                           message: 'Use “Add to favorites” on any album to see it here.',
                         )
-                      : const EmptyState(icon: Icons.album_outlined, title: 'No albums found'),
+                      : const EmptyState(icon: LucideIcons.disc3, title: 'No albums found'),
                 )
               else
                 SliverPadding(

@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 
 /// The app is dark-only and neutral: white and soft, untinted grays in the
@@ -54,6 +55,13 @@ ThemeData buildTheme() {
       titleLarge: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
       titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
     ),
+    // The icons Material widgets add themselves (an AppBar's back button).
+    actionIconTheme: ActionIconThemeData(
+      backButtonIconBuilder: (_) => const Icon(LucideIcons.chevronLeft),
+      closeButtonIconBuilder: (_) => const Icon(LucideIcons.x),
+      drawerButtonIconBuilder: (_) => const Icon(LucideIcons.menu),
+      endDrawerButtonIconBuilder: (_) => const Icon(LucideIcons.menu),
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: scheme.surface,
       surfaceTintColor: Colors.transparent,
@@ -62,19 +70,11 @@ ThemeData buildTheme() {
       centerTitle: false,
       titleTextStyle: text.titleLarge,
     ),
+    // The phone tab bar's background is the `Frosted` it sits in (`AppShell`).
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: scheme.surfaceContainerLow,
       indicatorColor: scheme.primary.withValues(alpha: 0.18),
       height: 68,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-    ),
-    sliderTheme: SliderThemeData(
-      trackHeight: 4,
-      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-      overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-      activeTrackColor: scheme.onSurface,
-      inactiveTrackColor: scheme.onSurface.withValues(alpha: 0.16),
-      thumbColor: scheme.onSurface,
     ),
     listTileTheme: ListTileThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
     inputDecorationTheme: InputDecorationTheme(
@@ -91,21 +91,11 @@ ThemeData buildTheme() {
       labelStyle: text.labelLarge,
       secondaryLabelStyle: text.labelLarge?.copyWith(color: scheme.onPrimary),
       checkmarkColor: scheme.onPrimary,
+      // Material's chip icon size, named, so chips match the menus.
+      iconTheme: IconThemeData(size: IconSizes.small, color: scheme.primary),
     ),
-    popupMenuTheme: PopupMenuThemeData(
-      color: scheme.surfaceContainerHigh,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-    // MenuAnchor menus (e.g. the Albums sort): inset, rounded rows instead of
+    // Rows of the popup menus (`showPopupMenu`): inset and rounded instead of
     // edge-to-edge 48px ones.
-    menuTheme: MenuThemeData(
-      style: MenuStyle(
-        backgroundColor: WidgetStatePropertyAll(scheme.surfaceContainerHigh),
-        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-        padding: const WidgetStatePropertyAll(EdgeInsets.all(6)),
-      ),
-    ),
     menuButtonTheme: MenuButtonThemeData(
       style: ButtonStyle(
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
@@ -131,3 +121,41 @@ ThemeData buildTheme() {
 const wideLayoutWidth = 840.0;
 
 bool isWide(BuildContext context) => MediaQuery.sizeOf(context).width >= wideLayoutWidth;
+
+/// Width of the desktop queue sidebar.
+const queueSidebarWidth = 340.0;
+
+/// From this window width the queue opens as a sidebar beside the content,
+/// leaving the content and the player bar enough room. Narrower windows show
+/// the queue in Now Playing instead.
+const queueSidebarLayoutWidth = 1140.0;
+
+bool fitsQueueSidebar(BuildContext context) => MediaQuery.sizeOf(context).width >= queueSidebarLayoutWidth;
+
+/// The app's icon sizes. Give an icon one of these rather than a number, so
+/// icons in the same role match everywhere. Material's default, 24, is the
+/// large size: an icon or [IconButton] with no size set gets it.
+abstract final class IconSizes {
+  /// Beside a line of text: sidebar items, desktop menu rows, inline labels.
+  static const small = 18.0;
+
+  /// Rows of buttons ([smallIconButtons]) and song-row indicators. Also the
+  /// slot a [small] icon sits centered in, so labels line up.
+  static const medium = 20.0;
+
+  /// Standalone buttons and touch lists (the phone menu sheet), and every
+  /// button in Now Playing besides its playback controls.
+  static const large = 24.0;
+
+  /// Now Playing's previous, play/pause and next, the one place controls run
+  /// bigger.
+  static const xlarge = 32.0;
+}
+
+/// The standard size for a row of icon buttons (the player bars, the album
+/// and playlist page actions): [IconSizes.medium] icons in 40px buttons, side
+/// by side, so the icons line up and sit evenly apart. Wrap the row in an
+/// [IconButtonTheme] with this, and leave the buttons' own `iconSize` unset.
+final smallIconButtons = IconButtonThemeData(
+  style: IconButton.styleFrom(iconSize: IconSizes.medium, fixedSize: const Size.square(40), padding: EdgeInsets.zero),
+);

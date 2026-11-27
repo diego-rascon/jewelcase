@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -6,11 +7,14 @@ import '../../audio/player_controller.dart';
 import '../../state/session.dart';
 import '../actions.dart';
 import '../format.dart';
+import '../theme.dart';
 import '../screens/favorite_songs_screen.dart';
 import 'cover_art.dart';
+import 'filled_icon.dart';
+import 'frosted.dart';
 
-/// Shared card chrome: artwork with a hover lift and optional play button,
-/// then a title and subtitle.
+/// Shared card chrome: artwork, then a title and subtitle. Cards with [onPlay]
+/// show a play button (bottom left) and a "⋯" menu (bottom right) on hover.
 class _MediaCard extends StatefulWidget {
   const _MediaCard({
     required this.art,
@@ -37,6 +41,24 @@ class _MediaCard extends StatefulWidget {
 class _MediaCardState extends State<_MediaCard> {
   bool _hover = false;
 
+  /// A round button on the floating player's frosted material.
+  Widget _frosted(Widget button) => Frosted(
+    edge: FrostedEdge.none,
+    child: IconButtonTheme(
+      data: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
+          fixedSize: const Size.square(32),
+          minimumSize: const Size.square(32),
+          padding: EdgeInsets.zero,
+          iconSize: IconSizes.small,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
+      child: button,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -53,46 +75,42 @@ class _MediaCardState extends State<_MediaCard> {
           child: Column(
             crossAxisAlignment: align,
             children: [
-              AnimatedScale(
-                scale: _hover ? 1.03 : 1,
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                child: Stack(
-                  children: [
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(widget.centered ? 999 : 10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: _hover ? 0.35 : 0.18),
-                            blurRadius: _hover ? 22 : 12,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: widget.art,
+              Stack(
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(widget.centered ? 999 : 10),
+                      boxShadow: const [BoxShadow(color: Color(0x2E000000), blurRadius: 12, offset: Offset(0, 6))],
                     ),
-                    if (widget.onPlay != null)
-                      Positioned(
-                        right: 10,
-                        bottom: 10,
-                        child: AnimatedOpacity(
-                          opacity: _hover ? 1 : 0,
-                          duration: const Duration(milliseconds: 150),
-                          child: IgnorePointer(
-                            ignoring: !_hover,
-                            child: FloatingActionButton.small(
-                              heroTag: null,
-                              elevation: 2,
-                              shape: const CircleBorder(),
-                              onPressed: widget.onPlay,
-                              child: const Icon(Icons.play_arrow_rounded),
-                            ),
+                    child: widget.art,
+                  ),
+                  if (widget.onPlay != null)
+                    Positioned(
+                      left: 10,
+                      right: 10,
+                      bottom: 10,
+                      child: AnimatedOpacity(
+                        opacity: _hover ? 1 : 0,
+                        duration: const Duration(milliseconds: 150),
+                        child: IgnorePointer(
+                          ignoring: !_hover,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _frosted(
+                                IconButton(
+                                  tooltip: 'Play',
+                                  icon: const FilledIcon(FilledIcons.play),
+                                  onPressed: widget.onPlay,
+                                ),
+                              ),
+                              _frosted(MoreButton(actions: widget.actions)),
+                            ],
                           ),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
               const SizedBox(height: 10),
               Text(
@@ -145,7 +163,7 @@ class ArtistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _MediaCard(
-    art: CoverArt(id: artist.coverArt, seed: artist.id, circle: true, icon: Icons.person_rounded),
+    art: CoverArt(id: artist.coverArt, seed: artist.id, circle: true, icon: LucideIcons.user),
     title: artist.name,
     subtitle: artist.albumCount > 0 ? plural(artist.albumCount, 'album') : null,
     centered: true,
@@ -169,7 +187,7 @@ class FavoriteSongsCard extends StatelessWidget {
       final starred = await session.client.getStarred(musicFolderId: session.libraryId);
       if (context.mounted) await context.read<PlayerController>().playSongs(starred.songs);
     }),
-    actions: () => [MenuAction('Open', Icons.favorite_rounded, () => openFavoriteSongs(context))],
+    actions: () => [MenuAction('Open', LucideIcons.star, () => openFavoriteSongs(context))],
   );
 }
 
@@ -180,7 +198,7 @@ class PlaylistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _MediaCard(
-    art: CoverArt(id: playlist.coverArt, seed: playlist.id, radius: 10, icon: Icons.queue_music_rounded),
+    art: CoverArt(id: playlist.coverArt, seed: playlist.id, radius: 10, icon: LucideIcons.listMusic),
     title: playlist.name,
     subtitle: plural(playlist.songCount, 'song'),
     onTap: () => openPlaylist(context, playlist),
@@ -188,6 +206,6 @@ class PlaylistCard extends StatelessWidget {
       final full = await context.read<SessionController>().client.getPlaylist(playlist.id);
       if (context.mounted) await context.read<PlayerController>().playSongs(full.songs);
     }),
-    actions: () => [MenuAction('Open', Icons.queue_music_rounded, () => openPlaylist(context, playlist))],
+    actions: () => [MenuAction('Open', LucideIcons.listMusic, () => openPlaylist(context, playlist))],
   );
 }

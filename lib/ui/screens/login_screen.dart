@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -96,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Server address',
                           hintText: 'music.example.com',
-                          prefixIcon: Icon(Icons.dns_rounded),
+                          prefixIcon: Icon(LucideIcons.server),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -105,10 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         validator: _required,
                         autofillHints: const [AutofillHints.username],
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Username',
-                          prefixIcon: Icon(Icons.person_rounded),
-                        ),
+                        decoration: const InputDecoration(labelText: 'Username', prefixIcon: Icon(LucideIcons.user)),
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
@@ -119,10 +117,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         onFieldSubmitted: (_) => _submit(),
                         decoration: InputDecoration(
                           labelText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_rounded),
+                          prefixIcon: const Icon(LucideIcons.lock),
                           suffixIcon: IconButton(
                             onPressed: () => setState(() => _obscure = !_obscure),
-                            icon: Icon(_obscure ? Icons.visibility_rounded : Icons.visibility_off_rounded),
+                            icon: Icon(_obscure ? LucideIcons.eye : LucideIcons.eyeOff),
                           ),
                         ),
                       ),

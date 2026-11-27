@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -141,7 +142,7 @@ class _SongsScreenState extends State<SongsScreen> {
               else if (_songs.isEmpty && _done)
                 const SliverFillRemaining(
                   hasScrollBody: false,
-                  child: EmptyState(icon: Icons.music_note_outlined, title: 'No songs found'),
+                  child: EmptyState(icon: LucideIcons.music, title: 'No songs found'),
                 )
               else ...[
                 SliverPadding(

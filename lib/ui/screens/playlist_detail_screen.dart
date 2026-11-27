@@ -1,3 +1,4 @@
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -78,32 +79,30 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         }
 
         return DetailPage(
-          cover: CoverArt(id: p.coverArt, seed: p.id, radius: 12, icon: Icons.queue_music_rounded),
+          cover: CoverArt(id: p.coverArt, seed: p.id, radius: 12, icon: LucideIcons.listMusic),
           tintCoverId: p.coverArt,
           title: p.name,
           subtitle: p.comment == null || p.comment!.isEmpty
               ? null
               : Text(p.comment!, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           meta: joinDot([p.owner, plural(songs.length, 'song'), formatLongDuration(p.duration)]),
-          onPlay: songs.isEmpty ? null : () => player.playSongs(songs),
-          onShuffle: songs.isEmpty ? null : () => player.playSongs(songs, shuffle: true),
-          actions: [
-            MoreButton(
-              actions: () => [
-                MenuAction(
-                  'Add to queue',
-                  Icons.add_to_queue_rounded,
-                  () => guarded(context, () => player.addToQueue(songs), success: 'Added to queue'),
-                ),
-                MenuAction('Delete playlist', Icons.delete_outline_rounded, delete),
-              ],
-            ),
-          ],
+          onPlay: songs.isEmpty ? null : (shuffle) => player.playSongs(songs, shuffle: shuffle),
+          actions: const [DownloadButton()],
+          menu: MoreButton(
+            actions: () => [
+              MenuAction(
+                'Add to queue',
+                LucideIcons.listEnd,
+                () => guarded(context, () => player.addToQueue(songs), success: 'Added to queue'),
+              ),
+              MenuAction('Delete playlist', LucideIcons.trash2, delete),
+            ],
+          ),
           slivers: [
             if (songs.isEmpty)
               const SliverToBoxAdapter(
                 child: EmptyState(
-                  icon: Icons.music_note_outlined,
+                  icon: LucideIcons.music,
                   title: 'This playlist is empty',
                   message: 'Use “Add to playlist…” on any song or album.',
                 ),
@@ -127,7 +126,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                       if (!_editing)
                         MenuAction(
                           'Remove from playlist',
-                          Icons.remove_circle_outline_rounded,
+                          LucideIcons.circleMinus,
                           () => _remove(p.id, rows[i].$1, reload),
                         ),
                     ],
