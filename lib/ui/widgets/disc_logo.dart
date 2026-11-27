@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
-/// The Jewelcase mark: a compact disc in warm coral, with a
-/// single soft sheen and a couple of grooves.
+/// The Jewelcase mark: a compact disc in blue, with a faint iridescent sheen,
+/// a groove and a clear hub.
 class DiscLogo extends StatelessWidget {
   const DiscLogo({super.key, this.size = 32});
 
@@ -22,8 +22,14 @@ class DiscPainter extends CustomPainter {
   /// Paints only the disc's shape in white, for Android's themed icons.
   final bool silhouette;
 
-  // Soft salmon down to coral, lit from the top left.
-  static const _body = [Color(0xFFFFC1A8), Color(0xFFFF8A78), Color(0xFFF2584F)];
+  // Sky blue down to a deep indigo-blue, lit from the top left.
+  static const _body = [Color(0xFF9AD8FF), Color(0xFF4C8DFF), Color(0xFF3247D9)];
+
+  // The sheen: one band leaning cyan, the opposite one lavender, the way a
+  // real disc splits light, kept pale so it reads as blue.
+  static const _cyan = Color(0x80E0FAFF);
+  static const _lavender = Color(0x66ECE4FF);
+  static const _clear = Color(0x00FFFFFF);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -53,29 +59,52 @@ class DiscPainter extends CustomPainter {
           colors: _body,
         ).createShader(bounds),
     );
-    // One soft band of light, repeated on the opposite side as on a real disc.
-    const glint = Color(0x73FFF1E8);
-    const clear = Color(0x00FFF1E8);
+    // Two soft bands of light on opposite sides.
     canvas.drawPath(
       disc,
       Paint()
         ..shader = const SweepGradient(
-          colors: [clear, glint, clear, clear, glint, clear],
-          stops: [0.03, 0.10, 0.18, 0.53, 0.60, 0.68],
+          startAngle: 0,
+          endAngle: 6.2832,
+          colors: [_clear, _cyan, _clear, _clear, _lavender, _clear],
+          stops: [0.05, 0.12, 0.20, 0.55, 0.62, 0.70],
         ).createShader(bounds),
     );
-    // Detail: one faint groove where the data area ends.
-    final line = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = r * 0.018
-      ..color = const Color(0x24000000);
-    canvas.drawCircle(center, r * 0.86, line);
+    // Detail: one groove where the data area ends, cut in with a light edge
+    // under a dark one.
+    final line = Paint()..style = PaintingStyle.stroke;
+    canvas
+      ..drawCircle(
+        center,
+        r * 0.86,
+        line
+          ..strokeWidth = r * 0.016
+          ..color = const Color(0x2E0A1650),
+      )
+      ..drawCircle(
+        center,
+        r * 0.86 - r * 0.016,
+        line
+          ..strokeWidth = r * 0.012
+          ..color = const Color(0x26FFFFFF),
+      );
     // Clear plastic hub around the hole.
-    canvas.drawPath(ring(hub, hole), Paint()..color = const Color(0x40FFFFFF));
-    line
-      ..strokeWidth = r * 0.024
-      ..color = const Color(0x2E000000);
-    canvas.drawCircle(center, hub, line);
+    canvas.drawPath(ring(hub, hole), Paint()..color = const Color(0x47FFFFFF));
+    canvas.drawCircle(
+      center,
+      hub,
+      line
+        ..strokeWidth = r * 0.022
+        ..color = const Color(0x330A1650),
+    );
+    // A thin bright rim, so the edge stays crisp on dark backgrounds.
+    canvas.drawCircle(
+      center,
+      r - r * 0.012,
+      line
+        ..strokeWidth = r * 0.024
+        ..color = const Color(0x33FFFFFF),
+    );
   }
 
   @override

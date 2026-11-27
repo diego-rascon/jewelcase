@@ -36,7 +36,8 @@ enum _Frame {
   final double discScale;
 }
 
-const _backdrop = [Color(0xFF26262E), Color(0xFF0E0E11)];
+// Deep navy, so the blue disc stands out without the plate looking black.
+const _backdrop = [Color(0xFF1D2A4A), Color(0xFF0A0F1F)];
 
 void _paint(Canvas canvas, double s, _Frame frame) {
   final full = Offset.zero & Size.square(s);
