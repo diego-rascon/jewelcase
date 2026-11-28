@@ -39,6 +39,7 @@ class Song {
     this.starred = false,
     this.suffix,
     this.bitRate,
+    this.played,
   });
 
   final String id;
@@ -56,6 +57,9 @@ class Song {
   final String? suffix;
   final int? bitRate;
 
+  /// Last play (OpenSubsonic); null if never played or not reported.
+  final DateTime? played;
+
   factory Song.fromJson(Json j) => Song(
     id: '${j['id']}',
     title: _str(j['title']) ?? 'Unknown title',
@@ -71,6 +75,7 @@ class Song {
     starred: j['starred'] != null,
     suffix: _str(j['suffix']),
     bitRate: _intOrNull(j['bitRate']),
+    played: _date(j['played']),
   );
 }
 
@@ -160,6 +165,52 @@ List<Genre> genresOf(Iterable<Album> albums) {
     ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 }
 
+/// [items] with the newest [date] first and undated items last. Ties keep
+/// their order (List.sort isn't stable, so they're broken by position).
+List<T> newestFirst<T>(Iterable<T> items, DateTime? Function(T) date) {
+  final indexed = [for (final (i, item) in items.indexed) (i, item, date(item))]
+    ..sort((a, b) {
+      final (ia, _, da) = a;
+      final (ib, _, db) = b;
+      final c = da == null
+          ? (db == null ? 0 : 1)
+          : db == null
+          ? -1
+          : db.compareTo(da);
+      return c != 0 ? c : ia.compareTo(ib);
+    });
+  return [for (final (_, item, _) in indexed) item];
+}
+
+/// The latest play of each key's albums, for ordering things that have no
+/// play date of their own (artists, genres) by their albums'.
+Map<String, DateTime> _lastPlayed(Iterable<Album> albums, Iterable<String> Function(Album) keys) {
+  final last = <String, DateTime>{};
+  for (final album in albums) {
+    final played = album.played;
+    if (played == null) continue;
+    for (final key in keys(album)) {
+      final prev = last[key];
+      if (prev == null || played.isAfter(prev)) last[key] = played;
+    }
+  }
+  return last;
+}
+
+/// [artists], the one whose album was played last first; artists never
+/// played keep their order at the end.
+List<Artist> artistsByRecentPlay(List<Artist> artists, Iterable<Album> albums) {
+  final last = _lastPlayed(albums, (a) => [?a.artistId]);
+  return newestFirst(artists, (a) => last[a.id]);
+}
+
+/// The genres of [albums] (see [genresOf]), the one whose album was played
+/// last first; genres never played follow by name.
+List<Genre> genresByRecentPlay(Iterable<Album> albums) {
+  final last = _lastPlayed(albums, (a) => a.genres);
+  return newestFirst(genresOf(albums), (g) => last[g.name]);
+}
+
 class Artist {
   const Artist({
     required this.id,
@@ -222,6 +273,7 @@ class Playlist {
     this.songCount = 0,
     this.duration = Duration.zero,
     this.coverArt,
+    this.changed,
     this.songs = const [],
   });
 
@@ -232,6 +284,9 @@ class Playlist {
   final int songCount;
   final Duration duration;
   final String? coverArt;
+
+  /// Last edit. The server doesn't record when a playlist was played.
+  final DateTime? changed;
 
   /// Only populated by `getPlaylist`.
   final List<Song> songs;
@@ -244,6 +299,7 @@ class Playlist {
     songCount: _int(j['songCount']),
     duration: Duration(seconds: _int(j['duration'])),
     coverArt: _str(j['coverArt']),
+    changed: _date(j['changed']),
     songs: jsonList(j['entry']).map(Song.fromJson).toList(),
   );
 }

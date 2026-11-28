@@ -14,7 +14,7 @@ enum Destination {
   genres('Genres', LucideIcons.tags),
   playlists('Playlists', LucideIcons.listMusic),
 
-  /// Phone-only tab combining albums, artists, songs and playlists.
+  /// Phone-only tab with an overview of albums, artists, songs, genres and playlists.
   library('Library', LucideIcons.libraryBig);
 
   const Destination(this.label, this.icon);
@@ -24,8 +24,8 @@ enum Destination {
 
   static const tabs = [home, search, library];
 
-  /// The phone library view's tabs, in order.
-  static const libraryTabs = [albums, artists, songs, playlists];
+  /// The sections the phone library tab stands in for.
+  static const libraryTabs = [albums, artists, songs, genres, playlists];
 }
 
 /// Each destination keeps its own navigation stack so detail pages open
@@ -51,9 +51,6 @@ class NavController extends ChangeNotifier {
     if (wide && _selected == Destination.library) return Destination.albums;
     return _selected;
   }
-
-  /// Which tab the phone library view should open on.
-  int get libraryTab => Destination.libraryTabs.indexOf(_selected).clamp(0, Destination.libraryTabs.length - 1);
 
   GlobalKey<NavigatorState> keyFor(Destination d) => _keys[d]!;
 
