@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 
 import '../../state/session.dart';
 import '../actions.dart';
-import '../theme.dart';
 import '../widgets/layout.dart';
 import '../widgets/popup_menu.dart';
 
@@ -120,23 +119,18 @@ class _Group extends StatelessWidget {
 
 /// Lets the user scope browsing to one Navidrome library (music folder).
 class LibraryPicker extends StatelessWidget {
-  const LibraryPicker({super.key, this.dense = false});
-
-  final bool dense;
+  const LibraryPicker({super.key});
 
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionController>();
     final current = session.library;
-    // Dense is the sidebar's picker, so its icons match the sidebar items.
-    final iconSize = dense ? IconSizes.small : null;
     return Builder(
       builder: (context) => ListTile(
-        dense: dense,
-        leading: Icon(LucideIcons.libraryBig, size: iconSize),
+        leading: const Icon(LucideIcons.libraryBig),
         title: Text(current?.name ?? 'All libraries', maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: dense ? null : const Text('Tap to switch'),
-        trailing: Icon(LucideIcons.chevronsUpDown, size: iconSize),
+        subtitle: const Text('Tap to switch'),
+        trailing: const Icon(LucideIcons.chevronsUpDown),
         onTap: () => unawaited(_pick(context, session)),
       ),
     );

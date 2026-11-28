@@ -8,6 +8,7 @@ import '../../api/models.dart';
 import '../../audio/player_controller.dart';
 import '../../state/session.dart';
 import '../navigation.dart';
+import '../theme.dart';
 import '../widgets/async_view.dart';
 import '../widgets/layout.dart';
 import '../widgets/media_cards.dart';
@@ -106,19 +107,32 @@ class _SearchScreenState extends State<SearchScreen> {
                   Text('Search', style: theme.textTheme.headlineMedium),
                   const SizedBox(height: 16),
                   ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 640),
+                    constraints: const BoxConstraints(maxWidth: 560),
                     child: TextField(
                       controller: _controller,
                       focusNode: _focus,
                       autofocus: true,
                       onChanged: _onChanged,
                       textInputAction: TextInputAction.search,
+                      style: theme.textTheme.bodyMedium,
+                      // 40px tall, with small icons in 40px slots.
                       decoration: InputDecoration(
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
                         hintText: 'Artists, albums, songs',
-                        prefixIcon: const Icon(LucideIcons.search),
+                        prefixIcon: const Icon(LucideIcons.search, size: IconSizes.small),
+                        prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                        suffixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                         suffixIcon: _controller.text.isEmpty
                             ? null
                             : IconButton(
+                                tooltip: 'Clear',
+                                visualDensity: VisualDensity.compact,
+                                iconSize: IconSizes.small,
                                 icon: const Icon(LucideIcons.x),
                                 onPressed: () {
                                   _controller.clear();

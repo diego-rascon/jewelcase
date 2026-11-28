@@ -98,8 +98,8 @@ class _HoveredRow extends ValueNotifier<int?> {
 }
 
 /// The column layout shared by [SongTile] and [SongListHeader], so the header
-/// lines up with the rows. The artist, album, favorite and duration columns
-/// only show on wide layouts.
+/// lines up with the rows. The artist, album and duration columns only show
+/// on wide layouts.
 class _SongRow extends StatelessWidget {
   const _SongRow({
     required this.wide,
@@ -129,7 +129,7 @@ class _SongRow extends StatelessWidget {
       Expanded(flex: wide && artist != null ? 4 : 5, child: title),
       if (wide && artist != null) ...[const SizedBox(width: 16), Expanded(flex: 3, child: artist!)],
       if (wide && album != null) ...[const SizedBox(width: 16), Expanded(flex: 3, child: album!)],
-      if (wide) favorite,
+      favorite,
       if (wide) ...[SizedBox(width: 52, child: duration), const SizedBox(width: 12)],
       more,
     ],
@@ -262,7 +262,8 @@ class _SortButton extends StatelessWidget {
 }
 
 /// One row in a track list. Shows the track number (or artwork), title,
-/// artist, and on wide screens the album and duration columns.
+/// artist and favorite button, and on wide screens the album and duration
+/// columns.
 class SongTile extends StatefulWidget {
   const SongTile({
     super.key,
@@ -394,7 +395,7 @@ class _SongTileState extends State<SongTile> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: _separators(
-                scheme.outlineVariant.withValues(alpha: 0.3),
+                scheme.outlineVariant.withValues(alpha: 0.6),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: _SongRow(
@@ -422,8 +423,9 @@ class _SongTileState extends State<SongTile> {
                     album: widget.showAlbum
                         ? Text(song.album ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: muted)
                         : null,
+                    // Touch screens can't hover, so phones always show it.
                     favorite: Opacity(
-                      opacity: _hover || isFav ? 1 : 0,
+                      opacity: !wide || _hover || isFav ? 1 : 0,
                       child: FavoriteButton(id: song.id, kind: FavoriteKind.song, size: IconSizes.small),
                     ),
                     duration: Text(formatDuration(song.duration), style: muted, textAlign: TextAlign.right),

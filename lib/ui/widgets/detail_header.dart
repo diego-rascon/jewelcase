@@ -59,8 +59,7 @@ class DetailPage extends StatefulWidget {
   /// row on phones, after Play and Shuffle in the wide layout.
   final List<Widget> actions;
 
-  /// The page's "more" button: in the top bar on phones, at the end of the
-  /// button row in the wide layout.
+  /// The page's "more" button, after [actions] in the button row.
   final Widget? menu;
   final List<Widget> slivers;
 
@@ -209,6 +208,7 @@ class _DetailPageState extends State<DetailPage> {
             child: Row(
               children: [
                 ...widget.actions.map(tinted),
+                if (widget.menu != null) widget.menu!,
                 const Spacer(),
                 tinted(const _ShuffleToggle()),
                 const SizedBox(width: 8),
@@ -240,9 +240,6 @@ class _DetailPageState extends State<DetailPage> {
             shape: Border(
               bottom: BorderSide(color: neutral.outlineVariant.withValues(alpha: shade)),
             ),
-            actions: [
-              if (!wide && widget.menu != null) ...[widget.menu!, const SizedBox(width: 4)],
-            ],
           ),
         ),
       ),

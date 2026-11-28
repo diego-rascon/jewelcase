@@ -21,12 +21,10 @@ import 'screens/playlist_detail_screen.dart';
 import 'screens/playlists_screen.dart';
 import 'screens/queue_view.dart';
 import 'screens/search_screen.dart';
-import 'screens/settings_screen.dart';
 import 'screens/songs_screen.dart';
 import 'theme.dart';
 import 'widgets/async_view.dart';
 import 'widgets/cover_art.dart';
-import 'widgets/disc_logo.dart';
 import 'widgets/frosted.dart';
 import 'widgets/now_playing_bars.dart';
 import 'widgets/side_panel.dart';
@@ -152,9 +150,7 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final nav = context.watch<NavController>();
-    final multipleLibraries = context.select<SessionController, bool>((s) => s.libraries.length > 1);
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = Theme.of(context).colorScheme;
 
     Widget item(Destination d) {
       final selected = nav.current == d;
@@ -173,16 +169,7 @@ class _Sidebar extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 22, 22, 14),
-                child: Row(
-                  children: [
-                    const DiscLogo(size: 26),
-                    const SizedBox(width: 10),
-                    Text('Jewelcase', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 12),
               item(Destination.home),
               item(Destination.search),
               const _SidebarHeading('Library'),
@@ -194,7 +181,13 @@ class _Sidebar extends StatelessWidget {
                 'Playlists',
                 trailing: IconButton(
                   tooltip: 'New playlist',
-                  visualDensity: VisualDensity.compact,
+                  // Square, so it's a circle within the heading's 28px row.
+                  style: IconButton.styleFrom(
+                    fixedSize: const Size.square(28),
+                    minimumSize: Size.zero,
+                    padding: EdgeInsets.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   iconSize: IconSizes.small,
                   color: scheme.onSurfaceVariant,
                   onPressed: () => createPlaylist(context),
@@ -202,17 +195,6 @@ class _Sidebar extends StatelessWidget {
                 ),
               ),
               const Expanded(child: _SidebarPlaylists()),
-              if (multipleLibraries)
-                const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: LibraryPicker(dense: true)),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _SidebarItem(
-                  selected: false,
-                  onTap: () => nav.push(const SettingsScreen()),
-                  leading: const Icon(LucideIcons.settings),
-                  label: 'Settings',
-                ),
-              ),
             ],
           ),
         ),

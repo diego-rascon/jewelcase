@@ -44,17 +44,18 @@ ThemeData buildTheme() {
       );
 
   final base = ThemeData(colorScheme: scheme, brightness: Brightness.dark, useMaterial3: true);
-  final text = base.textTheme.apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+  final plain = base.textTheme.apply(bodyColor: scheme.onSurface, displayColor: scheme.onSurface);
+  final text = plain.copyWith(
+    displaySmall: plain.displaySmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1),
+    headlineMedium: plain.headlineMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5),
+    headlineSmall: plain.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.3),
+    titleLarge: plain.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+    titleMedium: plain.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+  );
 
   return base.copyWith(
     scaffoldBackgroundColor: scheme.surface,
-    textTheme: text.copyWith(
-      displaySmall: text.displaySmall?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -1),
-      headlineMedium: text.headlineMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5),
-      headlineSmall: text.headlineSmall?.copyWith(fontWeight: FontWeight.w700, letterSpacing: -0.3),
-      titleLarge: text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-      titleMedium: text.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-    ),
+    textTheme: text,
     // The icons Material widgets add themselves (an AppBar's back button).
     actionIconTheme: ActionIconThemeData(
       backButtonIconBuilder: (_) => const Icon(LucideIcons.chevronLeft),
@@ -68,7 +69,8 @@ ThemeData buildTheme() {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: text.titleLarge,
+      // The page's name beside the back button, as big as a top-level page title.
+      titleTextStyle: text.headlineMedium,
     ),
     // The phone tab bar's background is the `Frosted` it sits in (`AppShell`).
     navigationBarTheme: NavigationBarThemeData(
