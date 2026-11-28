@@ -163,33 +163,46 @@ class MiniPlayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasSong = context.select<PlayerController, bool>((p) => p.current != null);
+    if (!hasSong) return const SizedBox.shrink();
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(8, 0, 8, 6),
+      child: NowPlayingOpener(child: _MiniPlayerCard()),
+    );
+  }
+}
+
+/// The [MiniPlayer]'s card. It reads the current song itself, since Now
+/// Playing draws a copy of it while opening and closing.
+class _MiniPlayerCard extends StatelessWidget {
+  const _MiniPlayerCard();
+
+  static const height = 62.0;
+
+  @override
+  Widget build(BuildContext context) {
     final p = context.read<PlayerController>();
     final (song, playing) = context.select<PlayerController, (Song?, bool)>((p) => (p.current, p.playing));
-    if (song == null) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
-      child: NowPlayingOpener(
-        child: _FloatingCard(
-          height: 62,
-          child: IconButtonTheme(
-            data: smallIconButtons,
-            child: _TrackPanel(
-              song: song,
-              artSize: 46,
-              padding: const EdgeInsets.fromLTRB(_FloatingCard.artInset, 8, 10, 8),
-              trailing: [
-                IconButton(
-                  tooltip: playing ? 'Pause' : 'Play',
-                  onPressed: p.togglePlay,
-                  icon: FilledIcon(playing ? FilledIcons.pause : FilledIcons.play),
-                ),
-                IconButton(tooltip: 'Next', onPressed: p.next, icon: const FilledIcon(FilledIcons.skipForward)),
-              ],
+    return _FloatingCard(
+      height: height,
+      child: song == null
+          ? null
+          : IconButtonTheme(
+              data: smallIconButtons,
+              child: _TrackPanel(
+                song: song,
+                artSize: 46,
+                padding: const EdgeInsets.fromLTRB(_FloatingCard.artInset, 8, 10, 8),
+                trailing: [
+                  IconButton(
+                    tooltip: playing ? 'Pause' : 'Play',
+                    onPressed: p.togglePlay,
+                    icon: FilledIcon(playing ? FilledIcons.pause : FilledIcons.play),
+                  ),
+                  IconButton(tooltip: 'Next', onPressed: p.next, icon: const FilledIcon(FilledIcons.skipForward)),
+                ],
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -211,7 +224,7 @@ class _FloatingCard extends StatelessWidget {
 
   final double height;
   final EdgeInsets padding;
-  final Widget child;
+  final Widget? child;
 
   @override
   Widget build(BuildContext context) => DecoratedBox(
@@ -252,17 +265,19 @@ class _TrackPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    Widget art = Hero(
-      tag: nowPlayingHeroTag,
-      child: SizedBox(
-        width: artSize,
-        child: CoverArt(id: song.coverArt, seed: song.albumId, radius: _FloatingCard.artRadius),
-      ),
+    Widget art = SizedBox(
+      width: artSize,
+      child: CoverArt(id: song.coverArt, seed: song.albumId, radius: _FloatingCard.artRadius),
     );
+    // On phones Now Playing grows out of the whole mini player instead, with
+    // the art riding along.
     if (desktop) {
       art = GestureDetector(
         onTap: () => openNowPlaying(context),
-        child: MouseRegion(cursor: SystemMouseCursors.click, child: art),
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: Hero(tag: nowPlayingHeroTag, child: art),
+        ),
       );
     }
 

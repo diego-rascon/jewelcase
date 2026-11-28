@@ -29,13 +29,43 @@ void openNowPlaying(BuildContext context, {bool showQueue = false}) {
 
 /// Slides Now Playing up over the app. A drag can drive the slide directly
 /// (see [_SlideDrag]), so the player follows the finger.
+///
+/// Opened from the mini player ([origin] and [collapsed] given), it grows out
+/// of the mini player on phones instead (see [_RiseFromMiniPlayer]).
 class _NowPlayingRoute extends PageRoute<void> {
-  _NowPlayingRoute({required this.showQueue});
+  _NowPlayingRoute({required this.showQueue, this.origin, this.collapsed});
 
   final bool showQueue;
 
-  /// The slide's position: 0 is off the bottom of the screen, 1 is fully up.
+  /// Where the mini player sits on screen, and the mini player itself.
+  final Rect? origin;
+  final Widget? collapsed;
+
+  /// The slide's position: 0 is closed, 1 is fully up.
   AnimationController get slide => controller!;
+
+  /// Settles the slide with a curve; a drag moves it linearly instead.
+  CurvedAnimation? _curved;
+
+  bool _risesFromMiniPlayer(BuildContext context) => origin != null && collapsed != null && !isWide(context);
+
+  /// How far the page's top edge travels between closed and open, so a drag
+  /// can move it 1:1 with the finger.
+  double travel(BuildContext context) =>
+      _risesFromMiniPlayer(context) ? origin!.top : MediaQuery.sizeOf(context).height;
+
+  /// The hero controller puts a new page offstage for its first frame, to
+  /// measure where its heroes land. Rising from the mini player has no hero,
+  /// and the mini player hides while the page covers it, so that frame would
+  /// blink the mini player away.
+  @override
+  set offstage(bool value) => super.offstage = value && origin == null;
+
+  @override
+  void dispose() {
+    _curved?.dispose();
+    super.dispose();
+  }
 
   @override
   Color? get barrierColor => null;
@@ -62,15 +92,101 @@ class _NowPlayingRoute extends PageRoute<void> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
     Widget child,
-  ) => SlideTransition(
-    position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(
-      // A drag moves the page 1:1 with the finger, and settles it with its own curve.
-      navigator!.userGestureInProgress
-          ? animation
-          : CurvedAnimation(parent: animation, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic),
-    ),
-    child: child,
-  );
+  ) {
+    // A drag moves the page 1:1 with the finger, and settles it with its own curve.
+    final progress = navigator!.userGestureInProgress
+        ? animation
+        : _curved ??= CurvedAnimation(parent: animation, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
+    if (_risesFromMiniPlayer(context)) {
+      return _RiseFromMiniPlayer(progress: progress, origin: origin!, collapsed: collapsed!, child: child);
+    }
+    return SlideTransition(
+      position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(progress),
+      child: child,
+    );
+  }
+}
+
+/// Phones: Now Playing grows out of the mini player. The page rises from the
+/// mini player's top edge, carrying a copy of the mini player, and widens from
+/// its width to the screen's. The copy fades out as the player fades in, and
+/// the app behind dims.
+class _RiseFromMiniPlayer extends StatelessWidget {
+  const _RiseFromMiniPlayer({
+    required this.progress,
+    required this.origin,
+    required this.collapsed,
+    required this.child,
+  });
+
+  final Animation<double> progress;
+  final Rect origin;
+  final Widget collapsed;
+  final Widget child;
+
+  static const _pageFade = Interval(0, 0.35);
+  static const _miniPlayerFade = Interval(0.05, 0.3);
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final miniPlayer = IgnorePointer(child: ExcludeSemantics(child: collapsed));
+    return AnimatedBuilder(
+      animation: progress,
+      child: child,
+      builder: (context, page) {
+        final t = progress.value;
+        final top = origin.top * (1 - t);
+        final left = origin.left * (1 - t);
+        final right = size.width - (size.width - origin.right) * (1 - t);
+        final radius = Radius.circular(_cardRadius * (1 - t));
+        final miniPlayerOpacity = 1 - _miniPlayerFade.transform(t);
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            IgnorePointer(
+              child: ColoredBox(color: Colors.black.withValues(alpha: 0.5 * t)),
+            ),
+            // The page keeps its full size, so it never lays out again; the
+            // clip narrows it to the mini player's width.
+            Transform.translate(
+              offset: Offset(0, top),
+              child: ClipRRect(
+                clipper: _RRectClipper(
+                  RRect.fromLTRBAndCorners(left, 0, right, size.height, topLeft: radius, topRight: radius),
+                ),
+                clipBehavior: t < 1 ? Clip.antiAlias : Clip.none,
+                child: Opacity(opacity: _pageFade.transform(t), child: page),
+              ),
+            ),
+            if (miniPlayerOpacity > 0)
+              Positioned(
+                left: left,
+                top: top,
+                width: right - left,
+                height: origin.height,
+                child: Opacity(opacity: miniPlayerOpacity, child: miniPlayer),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The mini player card's corner radius, which the rising page starts with.
+const _cardRadius = 14.0;
+
+class _RRectClipper extends CustomClipper<RRect> {
+  const _RRectClipper(this.rrect);
+
+  final RRect rrect;
+
+  @override
+  RRect getClip(Size size) => rrect;
+
+  @override
+  bool shouldReclip(_RRectClipper oldClipper) => oldClipper.rrect != rrect;
 }
 
 /// A vertical drag that moves Now Playing's slide with the finger, then
@@ -80,20 +196,20 @@ class _SlideDrag {
     _navigator.didStartUserGesture();
   }
 
-  /// Pushes Now Playing at the bottom edge, for a drag up from the mini player.
-  factory _SlideDrag.open(BuildContext context) {
-    final route = _NowPlayingRoute(showQueue: false);
+  /// Pushes Now Playing at its closed position, for a drag up from the mini
+  /// player.
+  factory _SlideDrag.open(BuildContext context, _NowPlayingRoute route) {
     unawaited(Navigator.of(context, rootNavigator: true).push(route));
     // Take over from the push animation, which started on push.
     route.slide.value = _minSlide;
-    return _SlideDrag._(route, MediaQuery.sizeOf(context).height);
+    return _SlideDrag._(route, route.travel(context));
   }
 
   /// Takes hold of the open Now Playing page that [context] is in, if any.
   static _SlideDrag? close(BuildContext context) {
     final route = ModalRoute.of(context);
     if (route is! _NowPlayingRoute || !route.isCurrent) return null;
-    return _SlideDrag._(route, MediaQuery.sizeOf(context).height);
+    return _SlideDrag._(route, route.travel(context));
   }
 
   /// The lowest a drag takes the slide. Never exactly 0: popping a route
@@ -121,8 +237,12 @@ class _SlideDrag {
   }
 }
 
-/// Opens Now Playing when [child] is tapped, or follows a drag up so the
-/// player slides out of it under the finger.
+/// The mini player: opens Now Playing when [child] is tapped, or follows a
+/// drag up so the player grows out of it under the finger.
+///
+/// The player draws its own copy of [child] while it rises, so [child] hides
+/// until the player has closed again, and must stay current by itself (it's
+/// built once more inside the player, from the same widget).
 class NowPlayingOpener extends StatefulWidget {
   const NowPlayingOpener({super.key, required this.child});
 
@@ -135,6 +255,45 @@ class NowPlayingOpener extends StatefulWidget {
 class _NowPlayingOpenerState extends State<NowPlayingOpener> {
   _SlideDrag? _drag;
 
+  /// The player this opened, until it has closed again.
+  _NowPlayingRoute? _route;
+
+  @override
+  void dispose() {
+    _route?.slide.removeStatusListener(_onSlide);
+    super.dispose();
+  }
+
+  _NowPlayingRoute _newRoute() {
+    final box = context.findRenderObject()! as RenderBox;
+    final route = _NowPlayingRoute(
+      showQueue: false,
+      origin: box.localToGlobal(Offset.zero) & box.size,
+      collapsed: widget.child,
+    );
+    _route?.slide.removeStatusListener(_onSlide);
+    setState(() => _route = route);
+    return route;
+  }
+
+  void _open() {
+    final route = _newRoute();
+    unawaited(Navigator.of(context, rootNavigator: true).push(route));
+    route.slide.addStatusListener(_onSlide);
+  }
+
+  void _startDrag() {
+    final route = _newRoute();
+    _drag = _SlideDrag.open(context, route);
+    route.slide.addStatusListener(_onSlide);
+  }
+
+  void _onSlide(AnimationStatus status) {
+    if (status != AnimationStatus.dismissed) return;
+    _route?.slide.removeStatusListener(_onSlide);
+    if (mounted) setState(() => _route = null);
+  }
+
   void _end(double velocity) {
     _drag?.end(velocity);
     _drag = null;
@@ -142,15 +301,15 @@ class _NowPlayingOpenerState extends State<NowPlayingOpener> {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-    onTap: () => openNowPlaying(context),
+    onTap: _open,
     onVerticalDragUpdate: (d) {
       // Only a drag up opens the player; one that starts downwards is ignored.
-      if (_drag == null && d.primaryDelta! < 0) _drag = _SlideDrag.open(context);
+      if (_drag == null && d.primaryDelta! < 0) _startDrag();
       _drag?.update(d);
     },
     onVerticalDragEnd: (d) => _end(d.primaryVelocity ?? 0),
     onVerticalDragCancel: () => _end(0),
-    child: widget.child,
+    child: Opacity(opacity: _route == null ? 1 : 0, child: widget.child),
   );
 }
 
