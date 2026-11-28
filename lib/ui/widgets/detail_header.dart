@@ -46,7 +46,10 @@ class DetailPage extends StatefulWidget {
   final String? kicker;
   final String title;
   final Widget? subtitle;
-  final String? meta;
+
+  /// A line of details under the subtitle, usually a `Text` of [joinDot]
+  /// parts, set in muted body text.
+  final Widget? meta;
 
   /// Starts playback; `shuffle` is the player's shuffle mode, which the
   /// Shuffle toggle next to Play sets. `null` disables Play.
@@ -142,7 +145,10 @@ class _DetailPageState extends State<DetailPage> {
         if (widget.subtitle != null) ...[const SizedBox(height: 6), tinted(widget.subtitle!)],
         if (widget.meta != null) ...[
           const SizedBox(height: 6),
-          Text(widget.meta!, style: theme.textTheme.bodyMedium?.copyWith(color: neutral.onSurfaceVariant)),
+          DefaultTextStyle.merge(
+            style: theme.textTheme.bodyMedium?.copyWith(color: neutral.onSurfaceVariant),
+            child: widget.meta!,
+          ),
         ],
       ],
     );

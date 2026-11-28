@@ -90,7 +90,7 @@ class _ArtistViewState extends State<_ArtistView> {
       cover: CoverArt(id: artist.coverArt, seed: artist.id, circle: true, icon: LucideIcons.user),
       kicker: 'Artist',
       title: artist.name,
-      meta: joinDot([plural(albums.length, 'album'), if (topSongs.isNotEmpty) 'Top songs available']),
+      meta: Text(joinDot([plural(albums.length, 'album'), if (topSongs.isNotEmpty) 'Top songs available'])),
       onPlay: _fetchingSongs || (topSongs.isEmpty && albums.isEmpty) ? null : play,
       actions: [FavoriteButton(id: artist.id, kind: FavoriteKind.artist)],
       slivers: [

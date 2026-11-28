@@ -85,7 +85,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           subtitle: p.comment == null || p.comment!.isEmpty
               ? null
               : Text(p.comment!, style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-          meta: joinDot([p.owner, plural(songs.length, 'song'), formatLongDuration(p.duration)]),
+          meta: Text(joinDot([p.owner, plural(songs.length, 'song'), formatLongDuration(p.duration)])),
           onPlay: songs.isEmpty ? null : (shuffle) => player.playSongs(songs, shuffle: shuffle),
           actions: const [DownloadButton()],
           menu: MoreButton(

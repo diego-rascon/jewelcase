@@ -157,6 +157,34 @@ class SubsonicClient {
     return jsonList((r['albumList2'] as Map?)?['album']).map(Album.fromJson).toList();
   }
 
+  /// One page of the albums tagged [genre].
+  Future<List<Album>> getAlbumsByGenre(String genre, {int size = 40, int offset = 0, String? musicFolderId}) async {
+    final r = await _get('getAlbumList2', {
+      'type': 'byGenre',
+      'genre': genre,
+      'size': size,
+      'offset': offset,
+      'musicFolderId': musicFolderId,
+    });
+    return jsonList((r['albumList2'] as Map?)?['album']).map(Album.fromJson).toList();
+  }
+
+  /// Every album, in pages of [pageSize] (Navidrome's maximum), sorted by
+  /// name so pages don't overlap.
+  Future<List<Album>> getAllAlbums({String? musicFolderId, int pageSize = 500}) async {
+    final albums = <Album>[];
+    while (true) {
+      final page = await getAlbumList(
+        AlbumSort.alphabeticalByName,
+        size: pageSize,
+        offset: albums.length,
+        musicFolderId: musicFolderId,
+      );
+      albums.addAll(page);
+      if (page.length < pageSize) return albums;
+    }
+  }
+
   Future<Album> getAlbum(String id) async {
     final r = await _get('getAlbum', {'id': id});
     return Album.fromJson(r['album'] as Json);

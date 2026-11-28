@@ -14,6 +14,7 @@ import 'navigation.dart';
 import 'screens/albums_screen.dart';
 import 'screens/artists_screen.dart';
 import 'screens/favorite_songs_screen.dart';
+import 'screens/genres_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/playlist_detail_screen.dart';
@@ -113,6 +114,7 @@ class _SectionsState extends State<_Sections> {
     Destination.albums => const AlbumsScreen(),
     Destination.artists => const ArtistsScreen(),
     Destination.songs => const SongsScreen(),
+    Destination.genres => const GenresScreen(),
     Destination.playlists => const PlaylistsScreen(),
     Destination.library => const LibraryScreen(),
   };
@@ -187,6 +189,7 @@ class _Sidebar extends StatelessWidget {
               item(Destination.albums),
               item(Destination.artists),
               item(Destination.songs),
+              item(Destination.genres),
               _SidebarHeading(
                 'Playlists',
                 trailing: IconButton(

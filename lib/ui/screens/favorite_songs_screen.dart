@@ -61,7 +61,7 @@ class _FavoriteSongsScreenState extends State<FavoriteSongsScreen> {
         return DetailPage(
           cover: FavoriteSongsScreen.cover(),
           title: FavoriteSongsScreen.title,
-          meta: joinDot([plural(visible.length, 'song'), formatLongDuration(total)]),
+          meta: Text(joinDot([plural(visible.length, 'song'), formatLongDuration(total)])),
           onPlay: visible.isEmpty ? null : (shuffle) => player.playSongs(visible, shuffle: shuffle),
           menu: MoreButton(
             actions: () => [

@@ -172,6 +172,22 @@ class ArtistCard extends StatelessWidget {
   );
 }
 
+/// A genre, on a placeholder tile seeded by its name (genres have no art).
+class GenreCard extends StatelessWidget {
+  const GenreCard({super.key, required this.genre});
+
+  final Genre genre;
+
+  @override
+  Widget build(BuildContext context) => _MediaCard(
+    art: CoverArt(id: null, seed: genre.name, radius: 10, icon: LucideIcons.tag),
+    title: genre.name,
+    subtitle: plural(genre.albumCount, 'album'),
+    onTap: () => openGenre(context, genre.name),
+    actions: () => [MenuAction('Open', LucideIcons.tag, () => openGenre(context, genre.name))],
+  );
+}
+
 /// The automatic Favorite songs playlist, listed before the real ones.
 class FavoriteSongsCard extends StatelessWidget {
   const FavoriteSongsCard({super.key});

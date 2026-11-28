@@ -11,6 +11,7 @@ enum Destination {
   albums('Albums', LucideIcons.disc3),
   artists('Artists', LucideIcons.user),
   songs('Songs', LucideIcons.music),
+  genres('Genres', LucideIcons.tags),
   playlists('Playlists', LucideIcons.listMusic),
 
   /// Phone-only tab combining albums, artists, songs and playlists.

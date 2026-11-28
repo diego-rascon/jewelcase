@@ -14,6 +14,7 @@ import 'navigation.dart';
 import 'screens/album_detail_screen.dart';
 import 'screens/artist_detail_screen.dart';
 import 'screens/favorite_songs_screen.dart';
+import 'screens/genre_screen.dart';
 import 'screens/playlist_detail_screen.dart';
 import 'theme.dart';
 import 'widgets/popup_menu.dart';
@@ -33,6 +34,8 @@ void openAlbum(BuildContext context, String id) => context.read<NavController>()
 
 void openArtist(BuildContext context, String id) =>
     context.read<NavController>().push(ArtistDetailScreen(artistId: id));
+
+void openGenre(BuildContext context, String genre) => context.read<NavController>().push(GenreScreen(genre: genre));
 
 /// Route name for a playlist's page, so the sidebar can tell which one is open.
 String playlistRouteName(String id) => 'playlist/$id';

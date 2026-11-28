@@ -15,4 +15,6 @@ String formatLongDuration(Duration d) {
 
 String plural(int n, String one, [String? many]) => '$n ${n == 1 ? one : (many ?? '${one}s')}';
 
-String joinDot(Iterable<Object?> parts) => parts.where((p) => p != null && '$p'.isNotEmpty).join('  ·  ');
+String joinDot(Iterable<Object?> parts) => parts.where((p) => p != null && '$p'.isNotEmpty).join(dotSeparator);
+
+const dotSeparator = '  ·  ';

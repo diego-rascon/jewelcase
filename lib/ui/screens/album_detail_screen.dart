@@ -81,7 +81,7 @@ class _AlbumView extends StatelessWidget {
       tintCoverId: album.coverArt,
       title: album.name,
       subtitle: album.artist == null ? null : _ArtistLink(album: album),
-      meta: joinDot([album.year, album.genre, plural(songs.length, 'song'), formatLongDuration(totalDuration)]),
+      meta: _AlbumMeta(album: album, songCount: songs.length, duration: totalDuration),
       onPlay: songs.isEmpty ? null : (shuffle) => player.playSongs(songs, shuffle: shuffle),
       actions: [
         FavoriteButton(id: album.id, kind: FavoriteKind.album),
@@ -93,6 +93,74 @@ class _AlbumView extends StatelessWidget {
           child: PagedSliver(sliver: SliverList.list(children: rows)),
         ),
       ],
+    );
+  }
+}
+
+/// Year, genres, song count and length, with each genre opening its page.
+class _AlbumMeta extends StatelessWidget {
+  const _AlbumMeta({required this.album, required this.songCount, required this.duration});
+
+  final Album album;
+  final int songCount;
+  final Duration duration;
+
+  @override
+  Widget build(BuildContext context) {
+    final parts = <InlineSpan>[
+      if (album.year != null) TextSpan(text: '${album.year}'),
+      for (final g in album.genres)
+        WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: _GenreLink(genre: g),
+        ),
+      TextSpan(text: plural(songCount, 'song')),
+      TextSpan(text: formatLongDuration(duration)),
+    ];
+    return Text.rich(
+      TextSpan(
+        children: [
+          for (final (i, part) in parts.indexed) ...[if (i > 0) const TextSpan(text: dotSeparator), part],
+        ],
+      ),
+    );
+  }
+}
+
+/// A genre name that opens the genre's albums, underlined on hover.
+class _GenreLink extends StatefulWidget {
+  const _GenreLink({required this.genre});
+
+  final String genre;
+
+  @override
+  State<_GenreLink> createState() => _GenreLinkState();
+}
+
+class _GenreLinkState extends State<_GenreLink> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: () => openGenre(context, widget.genre),
+        // Brighter than the rest of the line, so it reads as a link on
+        // touch screens too.
+        child: Text(
+          widget.genre,
+          style: TextStyle(
+            color: scheme.onSurface,
+            decoration: _hover ? TextDecoration.underline : null,
+            decorationColor: scheme.onSurface,
+          ),
+        ),
+      ),
     );
   }
 }

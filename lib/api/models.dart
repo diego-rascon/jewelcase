@@ -84,7 +84,7 @@ class Album {
     this.songCount = 0,
     this.duration = Duration.zero,
     this.year,
-    this.genre,
+    this.genres = const [],
     this.starred = false,
     this.created,
     this.played,
@@ -99,7 +99,10 @@ class Album {
   final int songCount;
   final Duration duration;
   final int? year;
-  final String? genre;
+
+  /// Every genre of the album (OpenSubsonic `genres`), or the single
+  /// Subsonic `genre` on servers without it.
+  final List<String> genres;
   final bool starred;
 
   /// When the album was added to the library.
@@ -120,12 +123,41 @@ class Album {
     songCount: _int(j['songCount']),
     duration: Duration(seconds: _int(j['duration'])),
     year: _intOrNull(j['year']),
-    genre: _str(j['genre']),
+    genres: _genres(j),
     starred: j['starred'] != null,
     created: _date(j['created']),
     played: _date(j['played']),
     songs: jsonList(j['song']).map(Song.fromJson).toList(),
   );
+
+  static List<String> _genres(Json j) {
+    final names = {for (final g in jsonList(j['genres'])) ?_str(g['name'])}.where((n) => n.isNotEmpty).toList();
+    if (names.isNotEmpty) return names;
+    final single = _str(j['genre']);
+    return single == null || single.isEmpty ? const [] : [single];
+  }
+}
+
+class Genre {
+  const Genre({required this.name, required this.albumCount});
+
+  final String name;
+  final int albumCount;
+}
+
+/// The genres of [albums] with how many albums carry each, by name. Counted
+/// here rather than taken from `getGenres`, whose counts the server saves at
+/// scan time: they include missing albums and every library, so they don't
+/// match what `getAlbumList2?type=byGenre` returns.
+List<Genre> genresOf(Iterable<Album> albums) {
+  final ids = <String, Set<String>>{};
+  for (final album in albums) {
+    for (final g in album.genres) {
+      (ids[g] ??= {}).add(album.id);
+    }
+  }
+  return [for (final MapEntry(:key, :value) in ids.entries) Genre(name: key, albumCount: value.length)]
+    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 }
 
 class Artist {

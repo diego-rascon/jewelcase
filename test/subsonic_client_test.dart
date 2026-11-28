@@ -233,10 +233,82 @@ void main() {
       expect(maxInFlight, 3);
     });
 
+    test('pages through every album', () async {
+      final offsets = <String?>[];
+      final client = SubsonicClient(
+        creds,
+        httpClient: MockClient((req) async {
+          final offset = int.parse(req.url.queryParameters['offset']!);
+          offsets.add(req.url.queryParameters['offset']);
+          expect(req.url.queryParameters, containsPair('type', 'alphabeticalByName'));
+          expect(req.url.queryParameters, containsPair('musicFolderId', '2'));
+          final count = offset == 0 ? 2 : 1;
+          return _ok({
+            'albumList2': {
+              'album': [
+                for (var i = 0; i < count; i++) {'id': 'al${offset + i}', 'name': 'A'},
+              ],
+            },
+          });
+        }),
+      );
+      final albums = await client.getAllAlbums(musicFolderId: '2', pageSize: 2);
+      expect(albums.map((a) => a.id), ['al0', 'al1', 'al2']);
+      expect(offsets, ['0', '2']);
+    });
+
+    test('lists one genre\'s albums in the selected library', () async {
+      late Uri seen;
+      final client = SubsonicClient(
+        creds,
+        httpClient: MockClient((req) async {
+          seen = req.url;
+          return _ok({
+            'albumList2': {
+              'album': {'id': 'al1', 'name': 'Blue'},
+            },
+          });
+        }),
+      );
+      final albums = await client.getAlbumsByGenre('Folk Rock', size: 60, offset: 120, musicFolderId: '2');
+      expect(seen.path, '/rest/getAlbumList2');
+      expect(seen.queryParameters, containsPair('type', 'byGenre'));
+      expect(seen.queryParameters, containsPair('genre', 'Folk Rock'));
+      expect(seen.queryParameters, containsPair('offset', '120'));
+      expect(seen.queryParameters, containsPair('musicFolderId', '2'));
+      expect(albums.single.id, 'al1');
+    });
+
     test('rejects non-Subsonic servers clearly', () async {
       final client = SubsonicClient(creds, httpClient: MockClient((_) async => http.Response('<html>', 200)));
       expect(client.ping(), throwsA(isA<SubsonicException>()));
     });
+  });
+
+  test('Album reads every OpenSubsonic genre, or falls back to the single one', () {
+    final multi = Album.fromJson({
+      'id': 'a',
+      'genre': 'Rock',
+      'genres': [
+        {'name': 'Rock'},
+        {'name': 'Indie'},
+        {'name': 'Rock'},
+      ],
+    });
+    expect(multi.genres, ['Rock', 'Indie']);
+    expect(Album.fromJson({'id': 'a', 'genre': 'Jazz'}).genres, ['Jazz']);
+    expect(Album.fromJson({'id': 'a', 'genre': ''}).genres, isEmpty);
+  });
+
+  test('genresOf counts each genre\'s albums once, by name', () {
+    Album album(String id, List<String> genres) => Album(id: id, name: id, genres: genres);
+    final genres = genresOf([
+      album('a', ['rock', 'Indie']),
+      album('b', ['rock']),
+      album('b', ['rock']), // the same album twice, e.g. across pages
+      album('c', []),
+    ]);
+    expect([for (final g in genres) (g.name, g.albumCount)], [('Indie', 1), ('rock', 2)]);
   });
 
   test('ArtistInfo strips Last.fm markup from bios', () {
